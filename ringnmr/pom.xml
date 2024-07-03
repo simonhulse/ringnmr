@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-core</artifactId>
-            <version>11.4.8-SNAPSHOT</version>
+            <version>11.4.9-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
               <dependency>
@@ -107,6 +107,17 @@
             <groupId>org.ojalgo</groupId>
             <artifactId>ojalgo</artifactId>
             <version>47.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>23.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>python-community</artifactId>
+            <version>23.1.2</version>
+            <type>pom</type>
         </dependency>
     </dependencies>
     <build>

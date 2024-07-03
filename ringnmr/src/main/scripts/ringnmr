@@ -1,14 +1,14 @@
 #!/bin/sh
 
 # ringnmr [ script  [ arg ... ] ]
-# 
+#
 # optional environment variables:
 #
 # JAVA_HOME  - directory of JDK/JRE, if not set then 'java' must be found on PATH
 # CLASSPATH  - colon separated list of additional jar files & class directories
 # JAVA_OPTS  - list of JVM options, e.g. "-Xmx256m -Dfoo=bar"
 #
-JAVA_OPTS="--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=ALL-UNNAMED"
+JAVA_OPTS="--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=ALL-UNNAMED -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -Dpython.EmulateJython"
 LOG_CONFIG="-Dlogback.configurationFile=config/logback.xml"
 
 if [ -n "$NMRFXP_MEMORY" ] ; then
@@ -19,6 +19,7 @@ fi
 
 ringver=${project.version}
 ringmain=org.python.util.jython
+graalmain="org.comdnmr.util.GraalShell"
 nmrfxlib="ringnmr-$ringver.jar"
 
 JAVA=java
@@ -57,10 +58,7 @@ else
 fi
 
 export CLASSPATH
-
-if [ "$#" -eq 0 ]; then
-    exec "$JAVA" -Djava.awt.headless=true -mx${HEAP_MEM}m -cp "$CLASSPATH" $JAVA_OPTS $ringmain ${1+"$@"}
-else
-    exec "$JAVA" -Djava.awt.headless=true -mx${HEAP_MEM}m -cp "$CLASSPATH" $JAVA_OPTS $ringmain -c "import comdnmrcalc" ${1+"$@"}
+echo $JAVA
+exec "$JAVA" -Djava.awt.headless=true -mx${HEAP_MEM}m -cp "$CLASSPATH" $JAVA_OPTS $graalmain ${1+"$@"}
 fi
 
