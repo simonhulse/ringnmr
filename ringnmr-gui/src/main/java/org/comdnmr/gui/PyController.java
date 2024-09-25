@@ -635,7 +635,6 @@ public class PyController implements Initializable {
         barChartXMin = Optional.of(xMin);
         barChartXMax = Optional.of(xMax);
 
-        System.out.println("xx " + xMin + " " + xMax);
         double limitMin = barCenter * (xMax - xMin) + xMin;
         double limitMax = fMax * (xMax - xMin) + xMin;
         for (ResidueChart residueChart : barCharts) {
