@@ -17,27 +17,24 @@
  */
 package org.comdnmr.eqnfit;
 
-import java.util.Arrays;
-import java.util.stream.IntStream;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotPositiveException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.TooManyEvaluationsException;
-import org.apache.commons.math3.optim.InitialGuess;
-import org.apache.commons.math3.optim.MaxEval;
-import org.apache.commons.math3.optim.PointValuePair;
-import org.apache.commons.math3.optim.SimpleBounds;
-import org.apache.commons.math3.optim.SimpleValueChecker;
+import org.apache.commons.math3.optim.*;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
 import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.CMAESOptimizer;
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.util.FastMath;
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDOptions;
+
+import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  *
@@ -62,7 +59,7 @@ public abstract class FitFunction implements MultivariateFunction {
     int[][] map;
     int nID = 1;
     boolean reportFitness = false;
-    final boolean absMode ;
+    final boolean absMode;
     private static boolean calcError = true;
     double[][] parValues;
     double[] lowerBounds;
@@ -91,11 +88,11 @@ public abstract class FitFunction implements MultivariateFunction {
             return converged;
         }
     }
-    
+
     public FitFunction(CoMDOptions options) {
         this.options = options;
         absMode = options.getAbsValueFit();
-        weightFit = options.getWeightFit();     
+        weightFit = options.getWeightFit();
     }
 
     public abstract void setEquation(String eqName);
@@ -145,7 +142,8 @@ public abstract class FitFunction implements MultivariateFunction {
                     new ObjectiveFunction(this), GoalType.MINIMIZE,
                     new SimpleBounds(normLower, normUpper),
                     new InitialGuess(normGuess));
-        } catch (DimensionMismatchException | NotPositiveException | NotStrictlyPositiveException | TooManyEvaluationsException e) {
+        } catch (DimensionMismatchException | NotPositiveException | NotStrictlyPositiveException |
+                 TooManyEvaluationsException e) {
             e.printStackTrace();
         }
         endTime = System.currentTimeMillis();
@@ -243,7 +241,7 @@ public abstract class FitFunction implements MultivariateFunction {
     public abstract double[] simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
 
     public abstract double[] simBoundsStream(double[] start,
-            double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
+                                             double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
 
     public abstract double[][] getSimPars();
 
@@ -276,7 +274,7 @@ public abstract class FitFunction implements MultivariateFunction {
         this.idNums = idNums;
         if (setNID()) {
             //for (int id : idNums) {
-                //System.out.print(id + " ");
+            //System.out.print(id + " ");
             //}
             //System.out.println("");
             throw new IllegalArgumentException("Invalid idNums, some values not used in setIds");
@@ -329,13 +327,25 @@ public abstract class FitFunction implements MultivariateFunction {
         return Math.sqrt(rss / yValues.length);
     }
 
+    public double getAIC(double[] par) {
+        double rss = getRSS(par);
+        int k = par.length;
+        int n = yValues.length;
+        return 2 * k + n * Math.log(rss);
+    }
+
     public double getAICc(double[] par) {
         double rss = getRSS(par);
         int k = par.length;
         int n = yValues.length;
-        double aic = 2 * k + n * Math.log(rss);
+        double aic = getAIC(par);
         double aicc = aic + 2 * k * (k + 1) / (n - k - 1);
         return aicc;
+    }
+
+    public FitQuality getFitQuality(double[] pars) {
+        return new FitQuality(getRMS(pars), getAIC(pars),
+                getAICc(pars), getReducedChiSq(pars), pars.length);
     }
 
     public double getReducedChiSq(double[] par) {

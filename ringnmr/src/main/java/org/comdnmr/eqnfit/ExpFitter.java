@@ -21,6 +21,7 @@ import org.apache.commons.math3.optim.PointValuePair;
 import org.comdnmr.data.Experiment;
 import org.comdnmr.data.ExperimentData;
 import org.comdnmr.data.ExperimentSet;
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDOptions;
 import org.comdnmr.util.CoMDPreferences;
 import org.nmrfx.chemistry.relax.ResonanceSource;
@@ -263,9 +264,7 @@ public class ExpFitter implements EquationFitter {
         }
         System.out.println("");
          */
-        double aic = expModel.getAICc(pars);
-        double rms = expModel.getRMS(pars);
-        double rChiSq = expModel.getReducedChiSq(pars);
+        FitQuality fitQuality = expModel.getFitQuality(pars);
 
 //        System.out.println("rms " + rms);
         int nGroupPars = expModel.getNGroupPars();
@@ -297,7 +296,7 @@ public class ExpFitter implements EquationFitter {
         boolean useWeight = options.getWeightFit();
         CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                 useNonParametric, sRadius, fRadius, tol, useWeight);
-        return getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates, aic, rms, rChiSq, simPars, true, curveStats);
+        return getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates, fitQuality, simPars, true, curveStats);
     }
 
     @Override

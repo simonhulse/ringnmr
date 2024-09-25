@@ -87,6 +87,7 @@ public class DynamicsSource {
                 molName = "noname";
             }
             molecule = MoleculeFactory.newMolecule(molName);
+            MoleculeFactory.setActive(molecule);
         }
         Matcher matcher = RESIDUE_PATTERN.matcher(atomSpecifier);
         String chainName = "";

@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDOptions;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 
@@ -81,7 +82,7 @@ public interface EquationFitter {
     }
 
     default FitResult getResults(EquationFitter fitter, String eqn, String[] parNames, ResonanceSource[] dynSources, int[][] map, int[][] states,
-                                 double[][] allExtras, int nGroupPars, double[] pars, double[] errEstimates, double aic, double rms, double rChiSq, double[][] simPars,
+                                 double[][] allExtras, int nGroupPars, double[] pars, double[] errEstimates, FitQuality fitQuality, double[][] simPars,
                                  boolean hasExchange, CurveFit.CurveFitStats curveStats) {
         int nNonGroup = parNames.length - nGroupPars;
         List<CurveFit> curveFits = new ArrayList<>();
@@ -118,9 +119,10 @@ public interface EquationFitter {
                 parMap.put(parValue.getName(), parValue.getValue());
                 parMap.put(parValue.getName() + ".sd", parValue.getError());
             }
-            parMap.put("AIC", aic);
-            parMap.put("RMS", rms);
-            parMap.put("rChiSq", rChiSq);
+            parMap.put("AIC", fitQuality.aic());
+            parMap.put("AICc", fitQuality.aicc());
+            parMap.put("RMS", fitQuality.rms());
+            parMap.put("rChiSq", fitQuality.rChiSq());
             FitFunction model = getFitModel();
 
             parMap.put("Equation", 1.0 + fitter.getEquationNameList().indexOf(eqn));
@@ -131,6 +133,6 @@ public interface EquationFitter {
             CurveFit curveFit = new CurveFit(stateString, dynSources[states[iCurve][0]], parMap, plotEquation);
             curveFits.add(curveFit);
         }
-        return new FitResult(parNames, curveFits, eqn, nGroupPars, aic, rms, rChiSq, simsMap, hasExchange, curveStats);
+        return new FitResult(parNames, curveFits, eqn, nGroupPars, fitQuality, simsMap, hasExchange, curveStats);
     }
 }

@@ -17,6 +17,7 @@
  */
 package org.comdnmr.eqnfit;
 
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDPreferences;
 import org.comdnmr.data.ExperimentSet;
 import org.comdnmr.data.ExperimentData;
@@ -278,11 +279,8 @@ public class CESTFitter implements EquationFitter {
                 }
                 System.out.println();
 
-                double aic = calcCEST.getAICc(pars);
-                double rms = calcCEST.getRMS(pars);
-                double rChiSq = calcCEST.getReducedChiSq(pars);
+                FitQuality fitQuality = calcCEST.getFitQuality(pars);
 
-                System.out.println("rms " + rms);
                 int nGroupPars = calcCEST.getNGroupPars();
                 sigma /= 2.0;
 
@@ -324,7 +322,7 @@ public class CESTFitter implements EquationFitter {
                 boolean useWeight = options.getWeightFit();
                 CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                         useNonParametric, sRadius, fRadius, tol, useWeight);
-                return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, aic, rms, rChiSq, simPars, exchangeValid, curveStats);
+                return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, fitQuality, simPars, exchangeValid, curveStats);
             } else {
                 return null;
             }

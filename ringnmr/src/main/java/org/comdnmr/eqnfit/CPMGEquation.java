@@ -271,7 +271,7 @@ public enum CPMGEquation implements EquationType {
     //                return value;
     //            }
     //        },
-    CPMGMQ("cpmgmq", 2, "kEx", "pA", "R2", "deltaCPPM", "deltaHPPM") {
+    CPMGMQ("cpmgmq", 2, "Kex", "pA", "R2", "deltaCPPM", "deltaHPPM") {
         @Override
         public double calculate(double[] par, int[] map, double[] x, int idNum) {
             // See the following DOI:

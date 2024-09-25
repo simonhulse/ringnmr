@@ -28,6 +28,7 @@ import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.apache.commons.math3.stat.inference.TTest;
 import org.comdnmr.data.Experiment;
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDOptions;
 import org.comdnmr.util.CoMDPreferences;
 import org.nmrfx.chemistry.relax.ResonanceSource;
@@ -255,10 +256,8 @@ public class CPMGFitter implements EquationFitter {
         }
         System.out.println();
 
-        double aic = calcR.getAICc(pars);
-        double rms = calcR.getRMS(pars);
-        double rChiSq = calcR.getReducedChiSq(pars);
-        System.out.printf("%.3f %.3f %.3f\n", aic, rms, rChiSq);
+        FitQuality fitQuality = calcR.getFitQuality(pars);
+
         int nGroupPars = calcR.getNGroupPars();
         sigma /= 2.0;
 
@@ -270,7 +269,7 @@ public class CPMGFitter implements EquationFitter {
         boolean okRex = false;
         double rexRatio = options.getRexRatio();
         for (double rexValue : rexValues) {
-            if (rexValue > rexRatio * rms) {
+            if (rexValue > rexRatio * fitQuality.rms()) {
                 okRex = true;
                 break;
             }
@@ -327,7 +326,7 @@ public class CPMGFitter implements EquationFitter {
         CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                 useNonParametric, sRadius, fRadius, tol, useWeight);
         double[][] extras = getFields(xValues, idValues);
-        return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, aic, rms, rChiSq, simPars, exchangeValid, curveStats);
+        return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, fitQuality, simPars, exchangeValid, curveStats);
     }
 
     @Override

@@ -17,6 +17,7 @@
  */
 package org.comdnmr.eqnfit;
 
+import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDPreferences;
 import org.comdnmr.data.ExperimentSet;
 import org.comdnmr.data.ExperimentData;
@@ -309,10 +310,8 @@ public class R1RhoFitter implements EquationFitter {
                 }
                 System.out.println("");
 
-                double aic = calcR1Rho.getAICc(pars);
-                double rms = calcR1Rho.getRMS(pars);
-                double rChiSq = calcR1Rho.getReducedChiSq(pars);
-                System.out.println("rms " + rms);
+                FitQuality fitQuality = calcR1Rho.getFitQuality(pars);
+
                 int nGroupPars = calcR1Rho.getNGroupPars();
                 sigma /= 2.0;
 
@@ -355,7 +354,7 @@ public class R1RhoFitter implements EquationFitter {
                 boolean useWeight = options.getWeightFit();
                 CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                         useNonParametric, sRadius, fRadius, tol, useWeight);
-                return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, aic, rms, rChiSq, simPars, exchangeValid, curveStats);
+                return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, fitQuality, simPars, exchangeValid, curveStats);
             } else {
                 return null;
             }

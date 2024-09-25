@@ -220,18 +220,20 @@ public class DataIO {
                 } else {
                     for (int i = offset; i < v[0].length; i++) {
                         double xValue = xConv.convert(xValues[i],null, null );
-                        xValueList.add(xValue);
                         double expIntensity = v[0][i];
-                        double yValue = yConv.convert(expIntensity, refIntensity, tau);
-                        yValueList.add(yValue);
-                        if (expMode.equalsIgnoreCase("noe")) {
-                            double expNoise = v[1][i];
-                            double r1 = refNoise / refIntensity;
-                            double r2 = expNoise / expIntensity;
-                            double eValue = Math.abs(expIntensity / refIntensity) * Math.sqrt(r1 * r1 + r2 * r2);
-                            errValueList.add(eValue);
-                        } else {
-                            errValueList.add(0.0);
+                        Double yValue = yConv.convert(expIntensity, refIntensity, tau);
+                        if (yValue != null) {
+                            xValueList.add(xValue);
+                            yValueList.add(yValue);
+                            if (expMode.equalsIgnoreCase("noe")) {
+                                double expNoise = v[1][i];
+                                double r1 = refNoise / refIntensity;
+                                double r2 = expNoise / expIntensity;
+                                double eValue = Math.abs(expIntensity / refIntensity) * Math.sqrt(r1 * r1 + r2 * r2);
+                                errValueList.add(eValue);
+                            } else {
+                                errValueList.add(0.0);
+                            }
                         }
                     }
                 }
@@ -1532,7 +1534,7 @@ Residue	 Peak	GrpSz	Group	Equation	   RMS	   AIC	Best	     R2	  R2.sd	    Rex	 R
     }
 
     public static void writeSTAR3File(FileWriter chan) throws IOException, ParseException, InvalidMoleculeException, InvalidPeakException {
-        NMRStarWriter.writeAll(chan);
+        NMRStarWriter.writeAll(chan, null);
     }
 
     public static void clearRelaxationData() {
@@ -1586,6 +1588,7 @@ Residue	 Peak	GrpSz	Group	Equation	   RMS	   AIC	Best	     R2	  R2.sd	    Rex	 R
         MoleculeBase mol = MoleculeFactory.getActive();
         if (mol == null) {
             mol = MoleculeFactory.newMolecule("noname");
+            MoleculeFactory.setActive(mol);
         }
         Map<String, RelaxationSet> setMap = mol.relaxationSetMap();
 

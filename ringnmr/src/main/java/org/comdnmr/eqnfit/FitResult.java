@@ -20,6 +20,8 @@ package org.comdnmr.eqnfit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.comdnmr.fit.FitQuality;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 
 /**
@@ -56,25 +58,28 @@ public class FitResult {
         return fitParNames;
     }
 
+    public FitQuality getFitQuality() {
+        return fitQuality;
+    }
     /**
      * @return the aicc
      */
     public double getAicc() {
-        return aicc;
+        return fitQuality.aicc();
     }
 
     /**
      * @return the rms
      */
     public double getRms() {
-        return rms;
+        return fitQuality.rms();
     }
 
     /**
      * @return the reduced chi-squared statistic
      */
     public double getRChiSq() {
-        return rChiSq;
+        return fitQuality.rChiSq();
     }
 
     public CurveFit getCurveFit(int iCurve) {
@@ -107,24 +112,21 @@ public class FitResult {
 
     private final String[] fitParNames;
     private final List<CurveFit> curveFits = new ArrayList<>();
-    private final double aicc;
-    private final double rms;
-    private final double rChiSq;
+
+    private FitQuality fitQuality;
     private final String equationName;
     private final int nGroupPars;
     private final Map<String, double[]> simsMap;
     private final boolean hasExchange;
     private final CurveFit.CurveFitStats curveFitStats;
 
-    public FitResult(String[] fitParNames, List<CurveFit> curveFits, String equationName, int nGroupPars, double aicc, double rms, double rChiSq, 
+    public FitResult(String[] fitParNames, List<CurveFit> curveFits, String equationName, int nGroupPars, FitQuality fitQuality,
             Map<String, double[]> simsMap, boolean hasExchange, CurveFit.CurveFitStats curveStats) {
         this.curveFits.addAll(curveFits);
         this.fitParNames = fitParNames.clone();
         this.equationName = equationName;
         this.nGroupPars = nGroupPars;
-        this.aicc = aicc;
-        this.rms = rms;
-        this.rChiSq = rChiSq;
+        this.fitQuality = fitQuality;
         this.simsMap = simsMap;
         this.hasExchange = hasExchange;
         this.curveFitStats = curveStats;

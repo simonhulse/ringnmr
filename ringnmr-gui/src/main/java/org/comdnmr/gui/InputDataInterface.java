@@ -17,11 +17,14 @@
  */
 package org.comdnmr.gui;
 
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -60,8 +63,9 @@ public class InputDataInterface {
     static final String INACTIVE_TEXT_STYLE = "-fx-control-inner-background: red;";
     PyController pyController;
 
+    BorderPane borderPane = new BorderPane();
     GridPane inputInfoDisplay = new GridPane();
-    Scene inputScene = new Scene(inputInfoDisplay, 600, 600);
+    Scene inputScene = new Scene(borderPane);
     Stage infoStage = new Stage();
     TextField chosenDirLabel = new TextField();
     TextField chosenFileLabel = new TextField();
@@ -101,39 +105,97 @@ public class InputDataInterface {
         pyController = controller;
     }
 
+    record Choices (ChoiceBox<String> typeChoice,
+                    ChoiceBox<DataIO.XCONV> xconvChoiceBox, ChoiceBox<DataIO.YCONV> yconvChoiceBox,
+                    TextField tauField, SimpleDoubleProperty tauProperty) {
+
+    }
+
+    private void updatePadding() {
+        Insets insets = new Insets(15, 15, 15, 15);
+        inputInfoDisplay.setPadding(insets);
+        inputInfoDisplay.setHgap(10);
+        inputInfoDisplay.setVgap(5);
+    }
     public void createPeakListInterface() {
         infoStage.setTitle("Load from Peak Lists");
+        borderPane.setCenter(inputInfoDisplay);
         inputInfoDisplay.getChildren().clear();
+        updatePadding();
         ColumnConstraints col1 = new ColumnConstraints(200);
         ColumnConstraints col2 = new ColumnConstraints(100);
-        inputInfoDisplay.getColumnConstraints().addAll(col1, col2);
+        ColumnConstraints col3 = new ColumnConstraints(150);
+        ColumnConstraints col4 = new ColumnConstraints(150);
+        ColumnConstraints col5 = new ColumnConstraints(100);
+        double width = 200 + 100 + 150 + 150 + 100;
+        inputInfoDisplay.setPrefWidth(width);
+        borderPane.setPrefWidth(width);
+        inputInfoDisplay.getColumnConstraints().clear();
+        inputInfoDisplay.getColumnConstraints().addAll(col1, col2, col3, col4, col5);
         List<PeakList> peakLists = new ArrayList<>();
-        List<ChoiceBox<String>> choices = new ArrayList<>();
+        List<Choices> choices = new ArrayList<>();
+        int delta = 1;
+        String[] headers = {"PeakList", " Type", "XConv", "YConv", "Tau"};
+        int iCol = 0;
+        for (String header : headers) {
+            inputInfoDisplay.add(new Label(header), iCol, 0);
+            iCol++;
+        }
         PeakList.peakLists().forEach(peakList -> {
             if (peakList.hasMeasures()) {
                 Label peakListLabel = new Label(peakList.getName());
                 peakLists.add(peakList);
                 ChoiceBox<String> typeChoice = new ChoiceBox<>();
-                choices.add(typeChoice);
                 typeChoice.getItems().addAll(Arrays.asList("", "R1", "R2", "NOE", "RAP", "RQ", "CPMG"));
-                inputInfoDisplay.add(peakListLabel, 0, choices.size() - 1);
-                inputInfoDisplay.add(typeChoice, 1, choices.size() - 1);
+                inputInfoDisplay.add(peakListLabel, 0, choices.size() + delta);
+                inputInfoDisplay.add(typeChoice, 1, choices.size() + delta);
+                ChoiceBox<DataIO.XCONV> xconvChoiceBox = new ChoiceBox<>();
+                xconvChoiceBox.getItems().addAll(DataIO.XCONV.values());
+                ChoiceBox<DataIO.YCONV> yconvChoiceBox = new ChoiceBox<>();
+                yconvChoiceBox.getItems().addAll(DataIO.YCONV.values());
+                inputInfoDisplay.add(xconvChoiceBox, 2, choices.size() + delta);
+                inputInfoDisplay.add(yconvChoiceBox, 3, choices.size() + delta);
+                xconvChoiceBox.setValue(DataIO.XCONV.IDENTITY);
+                yconvChoiceBox.setValue(DataIO.YCONV.IDENTITY);
+                SimpleDoubleProperty tauProperty = new SimpleDoubleProperty(0.0);
+                TextField tauField = GUIUtils.getDoubleTextField(tauProperty);
+                inputInfoDisplay.add(tauField, 4, choices.size() + delta);
+                Choices choices1 = new Choices(typeChoice, xconvChoiceBox, yconvChoiceBox, tauField, tauProperty);
+                tauField.setDisable(true);
                 typeChoice.setValue("");
+                typeChoice.setOnAction(e -> updateConv(choices1));
+                choices.add(choices1);
             }
         });
         CheckBox autoFit = new CheckBox("Auto Fit");
         loadButton.setOnAction(e -> loadFromPeakLists(peakLists, choices, autoFit.isSelected()));
         loadButton.setText("Load");
         loadButton.setDisable(false);
-        inputInfoDisplay.add(autoFit, 0, choices.size());
-        inputInfoDisplay.add(loadButton, 1, choices.size());
+        ToolBar toolBar = new ToolBar();
+        borderPane.setBottom(toolBar);
+        toolBar.getItems().addAll(autoFit, loadButton);
         infoStage.setScene(inputScene);
         infoStage.show();
+        infoStage.toFront();
     }
 
-    private void loadFromPeakLists(List<PeakList> peakLists, List<ChoiceBox<String>> choiceBoxes, boolean autoFit) {
+    void updateConv(Choices choices) {
+        choices.yconvChoiceBox().setValue(DataIO.YCONV.IDENTITY);
+        choices.xconvChoiceBox().setValue(DataIO.XCONV.IDENTITY);
+        choices.tauField.setDisable(true);
+        switch (choices.typeChoice.getValue()) {
+            case "CPMG" -> {
+                choices.tauField.setDisable(false);
+                choices.yconvChoiceBox().setValue(DataIO.YCONV.RATE);
+            }
+        }
+
+    }
+    private void loadFromPeakLists(List<PeakList> peakLists, List<Choices> choices, boolean autoFit) {
+        ExperimentSet experimentSet = new ExperimentSet("peaks", "peaks");
         for (int i = 0; i < peakLists.size(); i++) {
-            String type = choiceBoxes.get(i).getValue();
+            Choices choice = choices.get(i);
+            String type = choice.typeChoice.getValue();
             if (!type.isBlank()) {
                 PeakList peakList = peakLists.get(i);
                 if (peakList != null) {
@@ -143,9 +205,10 @@ public class InputDataInterface {
                     double temperature;
                     double tau = 0.0;
                     if (type.equalsIgnoreCase("cpmg")) {
-                        String tauStr = GUIUtils.input("tau");
-                        if ((tauStr != null) && !tauStr.isBlank()) {
-                            tau = Double.parseDouble(tauStr);
+                        tau = choice.tauProperty.get();
+                        if (tau < 1.0e-6) {
+                            GUIUtils.warn("CPMG Tau Value", "Must be non-zero");
+                            return;
                         }
                     }
                     DatasetBase dataset = DatasetBase.getDataset(peakList.fileName);
@@ -158,10 +221,7 @@ public class InputDataInterface {
                         B0field = dataset.getSf(0);
                         temperature = dataset.getTempK();
                     }
-                    nucChoice.setValue(nucleus);
-                    B0fieldChoice.setValue(String.valueOf(B0field));
-                    tempTextField.setText(String.valueOf(temperature));
-                    loadFromPeakList(peakList, type, nucleus, B0field, temperature, tau, autoFit);
+                    loadFromPeakList(experimentSet, peakList, type, nucleus, B0field, temperature, tau, choice.xconvChoiceBox.getValue(), choice.yconvChoiceBox.getValue(), autoFit);
                 }
             }
         }
@@ -260,6 +320,9 @@ public class InputDataInterface {
         TextField[] texts = {tempTextField, pTextField, tauTextField, B1TextField};
 
         inputInfoDisplay.getChildren().clear();
+        updatePadding();
+        borderPane.setCenter(inputInfoDisplay);
+        borderPane.setBottom(null);
 
         for (int i = 0; i < labels.length; i++) {
             inputInfoDisplay.add(labels[i], 0, i);
@@ -376,16 +439,17 @@ public class InputDataInterface {
 
         clearButton.setOnAction(this::clearDataList);
         clearButton.setText("Clear Data List");
-        inputInfoDisplay.add(clearButton, 1, labels.length + 1);
 
         yamlButton.setOnAction(this::makeYAML);
         yamlButton.setText("Create YAML");
         yamlButton.disableProperty().bind(yamlTextField.textProperty().isEmpty());
-        inputInfoDisplay.add(yamlButton, 2, labels.length - 1);
 
         loadButton.setOnAction(this::loadInfo);
         loadButton.setText("Load");
-        inputInfoDisplay.add(loadButton, 2, labels.length + 1);
+
+        ToolBar toolBar = new ToolBar();
+        borderPane.setBottom(toolBar);
+        toolBar.getItems().addAll(clearButton, yamlButton, loadButton);
 
         updateInfoInterface();
 
@@ -654,10 +718,20 @@ public class InputDataInterface {
         Double temperatureK = getDouble(tempTextField.getText());
         Double tau = getDouble("tau");
         String nucName = nucChoice.getValue();
-        loadFromPeakList(peakList, expMode, nucName, b0Field, temperatureK, tau, false);
+        DataIO.XCONV xConv = xConvChoice.getValue() == null ? DataIO.XCONV.IDENTITY : DataIO.XCONV.valueOf(xConvChoice.getValue());
+        DataIO.YCONV yConv = yConvChoice.getValue() == null ? DataIO.YCONV.IDENTITY :  DataIO.YCONV.valueOf(yConvChoice.getValue());
+        if (expMode.equalsIgnoreCase("noe")) {
+            yConv = DataIO.YCONV.NORMALIZE;
+        } else if (expMode.equalsIgnoreCase("cpmg")) {
+            yConv = DataIO.YCONV.RATE;
+            xConv = DataIO.XCONV.TAU4;
+        }
+        ExperimentSet experimentSet = new ExperimentSet("peaks", "peaks");
+        loadFromPeakList(experimentSet, peakList, expMode, nucName, b0Field, temperatureK, tau, xConv, yConv, false);
     }
 
-    void loadFromPeakList(PeakList peakList, String expMode, String nucName, double b0Field, double temperatureK, double tau,
+    void loadFromPeakList(ExperimentSet experimentSet, PeakList peakList, String expMode, String nucName, double b0Field, double temperatureK, double tau,
+                          DataIO.XCONV xConv, DataIO.YCONV yConv,
                           boolean autoFit) {
         expMode = expMode.toLowerCase();
         if (peakList != null) {
@@ -676,7 +750,6 @@ public class InputDataInterface {
             boolean dynCreateAtom = true;
             DynamicsSource dynSource = new DynamicsSource(false, false, dynCreateMol, dynCreateAtom);
             String peakListName = peakList.getName();
-            ExperimentSet experimentSet = new ExperimentSet(peakListName, peakListName);
             experimentSet.setExpMode(expMode);
 
             Experiment expData;
@@ -704,14 +777,6 @@ public class InputDataInterface {
             }
 
             try {
-                String xConv = xConvChoice.getValue() == null ? "identity" : xConvChoice.getValue();
-                String yConv = yConvChoice.getValue() == null ? "identity" : yConvChoice.getValue();
-                if (expMode.equalsIgnoreCase("noe")) {
-                    yConv = "normalize";
-                } else if (expMode.equalsIgnoreCase("cpmg")) {
-                    yConv = "rate";
-                    xConv = "tau4";
-                }
                 DataIO.loadFromPeakList(peakList, expData, experimentSet,
                         xConv, yConv, dynSource);
                 ResidueChart reschartNode = PyController.mainController.getActiveChart();
