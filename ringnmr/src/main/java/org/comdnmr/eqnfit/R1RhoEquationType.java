@@ -52,7 +52,7 @@ public interface R1RhoEquationType extends EquationType {
             int yIndex = xy.length - 1;
             List<CESTPeak> peaks = CESTEquations.cestPeakGuess(xy, "r1rho");
             if (peaks.size() > 0) {
-                double tex = xValues[4][0];
+                double tex = xValues[2][0];
                 double[] r1 = CESTEquations.cestR1Guess(xy[yIndex], tex, "r1rho");
                 double[][] r2 = CESTEquations.cestR2Guess(peaks, xy[yIndex], "r1rho");
                 guesses[map1[0]] = CESTEquations.cestKexGuess(peaks, "r1rho"); //112.0; //kex
