@@ -17,6 +17,8 @@
  */
 package org.comdnmr.modelfree;
 
+import static java.lang.Math.pow;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -186,7 +188,7 @@ public class RelaxEquations {
         return Math.abs(sf * GAMMA_MAP.get(elemX) / GAMMA_H);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculation using Model
      * 1.
@@ -201,7 +203,7 @@ public class RelaxEquations {
         return 0.4 * tauM * (value1);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     // tau = ts in Art Palmer's code (taue in the paper: Phys Chem Chem Phys, 2016, 18, 5839-5849), and taue in Relax.
     /**
      * Model Free spectral density function, J(omega), calculation using Model
@@ -258,7 +260,8 @@ public class RelaxEquations {
         return 0.4 * tauM * (value1 + value2 + value3);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculations using Model
      * 1.
@@ -409,7 +412,7 @@ public class RelaxEquations {
         return 0.4 * sum;
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculations using
      * ModelFree Model 1, 2, 5, or 6.
@@ -489,7 +492,7 @@ public class RelaxEquations {
 
     public double[] getDiffusionConstants(String type) {
         String[] types = {"sphere", "spheroid", "ellipsoid"};
-        double[][] constants = {{1}};//, 
+        double[][] constants = {{1}};//,
 //            {0.25*(3.0*dz2 - 1)*(3.0*dz2 - 1), 3*dz2*(1 - dz2), 0.75*(3.0*dz2 - 1)*(3.0*dz2 - 1)},
 //            {0.25*(dtot - e), 3*dy2*dz2, 3*dx2*dz2, 3*dx2*dy2, 0.25*(dtot + e)}};
         return constants[Arrays.asList(types).indexOf(type)];
@@ -497,7 +500,7 @@ public class RelaxEquations {
 
     public double[] getCorrelationTimes(String type, double Diso, double Da, double Dr) {
         String[] types = {"sphere", "spheroid", "ellipsoid"};
-        double[][] tauInv = {{6 * Diso}};//, 
+        double[][] tauInv = {{6 * Diso}};//,
 //            {6*Diso - 2*Da, 6*Diso - Da, 6*Diso + 2*Da},
 //            {6*Diso - 2*Da*R, 6*Diso - Da*(1 + 3*Dr), 6*Diso - Da*(1 - 3*Dr), 6*Diso + 2*Da, 6*Diso + 2*Da*R}};
         int index = Arrays.asList(types).indexOf(type);
@@ -775,4 +778,47 @@ public class RelaxEquations {
         return (4.0 / 3.0) * (J[0] / J[S]);
     }
 
+    // SIMON'S ADDITIONS
+    public double JModelFreeExt(double omega, double tauM, double tauF, double tauS, double sf2, double ss2) {
+        omega *= 1.0e6;
+
+        double tau1 = recipEqn(tauM, tauS);
+        double tau2 = recipEqn(tauM, tauF);
+        double tau3 = recipEqn(tauM, tauS, tauF);
+
+        double tauMSq = pow(tauM, 2.0);
+        double tau1Sq = pow(tau1, 2.0);
+        double tau2Sq = pow(tau2, 2.0);
+        double tau3Sq = pow(tau3, 2.0);
+        double omegaSq = pow(omega, 2.0);
+
+        double term1 = (sf2 * ss2 * tauM) / (1.0 + omegaSq * tauMSq);
+        double term2 = (sf2 * (1.0 - ss2) * tau1) / (1.0 + omegaSq * tau1Sq);
+        double term3 = ((1.0 - sf2) * ss2 * tau2) / (1.0 + omegaSq * tau2Sq);
+        double term4 = ((1.0 - sf2) * (1.0 - ss2) * tau3) / (1.0 + omegaSq * tau3Sq);
+
+        return 0.4 * (term1 + term2 + term3 + term4);
+    }
+
+    private double recipEqn(double... taus) {
+        double recip = 0.0;
+        double tau;
+        for (int i = 0; i < taus.length; i++) {
+            tau = taus[i];
+            if (tau == 0.0) {
+                return 0.0;
+            }
+            recip += 1 / taus[i];
+        }
+        return 1.0 / recip;
+    }
+
+    public double[] getJModelFreeExt(double tauM, double tauF, double tauS, double sf2, double ss2) {
+        double J0 = JModelFreeExt(0.0, tauM, tauF, tauS, sf2, ss2);
+        double JS = JModelFreeExt(wS, tauM, tauF, tauS, sf2, ss2);
+        double JIminusS = JModelFreeExt(wI - wS, tauM, tauF, tauS, sf2, ss2);
+        double JI = JModelFreeExt(wI, tauM, tauF, tauS, sf2, ss2);
+        double JIplusS = JModelFreeExt(wI + wS, tauM, tauF, tauS, sf2, ss2);
+        return new double[]{J0, JS, JIminusS, JI, JIplusS};
+    }
 }
