@@ -64,15 +64,21 @@ public class MFModelIso2sf extends MFModelIso2f {
         double s2 = ss2 * sf2;
         for (double omega : omegas) {
             double omega2 = omega * omega;
+
             double vM = s2 * tauMx / (1.0 + omega2 * tauMx * tauMx);
             double vMS = sf2 * (1.0 - ss2) * (tauMx * tauSx * (tauMx + tauSx))
                     / (tauMx * tauMx * tauSx * tauSx * omega2 + (tauMx + tauSx) * (tauMx + tauSx));
             double vMF = (1.0 - sf2) * ss2 * (tauMx * tauFx * (tauMx + tauFx))
                     / (tauMx * tauMx * tauFx * tauFx * omega2 + (tauMx + tauFx) * (tauMx + tauFx));
+
             double tauMFS = tauFx * (tauMx + tauSx) + tauMx * tauSx;
-            double vMFS = (1.0 - sf2) * (1.0 - ss2) * (tauFx * tauMx * tauSx * tauMFS)
-                    / (tauFx * tauFx * tauMx * tauMx * tauSx * tauSx * omega2
-                    + tauMFS * tauMFS);
+            double vMFSNum = (1.0 - sf2) * (1.0 - ss2) * (tauFx * tauMx * tauSx * tauMFS);
+            double vMFS = 0.0;
+            if (vMFSNum > 1.0e-16) {
+                double vMFSDen = (tauFx * tauFx * tauMx * tauMx * tauSx * tauSx * omega2 + tauMFS * tauMFS);
+                vMFS = vMFSNum / vMFSDen;
+            }
+
             J[j++] = 0.4 * (vM + vMS + vMF + vMFS);
         }
         complexityS
