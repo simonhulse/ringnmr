@@ -394,7 +394,7 @@ public class FitR1R2NOEModel extends FitModel {
             for (int i = 0; i < nReplicates; i++) {
                 rssSum += bestScores[i].rss;
             }
-            double rss = rssSum /= nReplicates;
+            double rss = rssSum / nReplicates;
             OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
             OrderPar orderPar = new OrderPar(orderParSet, resSource, rss, bestScores[0].nValues, parNames.length, bestModel.getName());
             double[][] cov = new double[nJ][parNames.length];
@@ -484,7 +484,7 @@ public class FitR1R2NOEModel extends FitModel {
         int nTries = 3;
         PointValuePair best = null;
         for (int i = 0; i < nTries; i++) {
-            PointValuePair fitResult = relaxFit.fitResidueToModel(start, lower, upper);
+            PointValuePair fitResult = relaxFit.fitResidueToModel(start, lower, upper, getSigma());
             if ((i == 0) || (fitResult.getValue() < best.getValue())) {
                 best = fitResult;
             }

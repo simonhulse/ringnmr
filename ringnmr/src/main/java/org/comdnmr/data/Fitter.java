@@ -41,14 +41,8 @@ public class Fitter {
     double inputSigma;
     BiFunction<double[], double[][], Double> valuesFunction = null;
 
-    private Fitter() {
-
-    }
-
-    public static Fitter getArrayFitter(BiFunction<double[], double[][], Double> function) {
-        Fitter fitter = new Fitter();
-        fitter.valuesFunction = function;
-        return fitter;
+    public Fitter(BiFunction<double[], double[][], Double> function) {
+        this.valuesFunction = function;
     }
 
     public double value(double[] par) {

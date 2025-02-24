@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mainClass>org.comdnmr.fit.chart.MainApp</mainClass>
     </properties>
-    
+
     <repositories>
         <repository>
             <id>central maven repo</id>
@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-core</artifactId>
-            <version>11.4.14</version>
+            <version>11.4.16-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
               <dependency>
@@ -192,7 +192,7 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>  
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

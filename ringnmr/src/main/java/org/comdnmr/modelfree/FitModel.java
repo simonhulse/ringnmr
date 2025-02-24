@@ -21,29 +21,29 @@ import java.util.function.Function;
 public abstract class FitModel {
     public static UniformRandomProvider rng = null;
 
-    Double tau;
-    boolean fitTau = false;
-    boolean fitJ = false;
-    BootstrapMode bootstrapMode = BootstrapMode.PARAMETRIC;
-    boolean bayesian = false;
-    boolean fitExchange = false;
-    double tauFraction = 0.25;
-    double lambdaS = 0.0;
-    double lambdaTau = 0.0;
-    boolean useLambda = false;
-    double t2Limit = 0.0;
-    int nReplicates = 0;
+    protected Double tau;
+    protected boolean fitTau = false;
+    protected boolean fitJ = false;
+    protected BootstrapMode bootstrapMode = BootstrapMode.PARAMETRIC;
+    protected boolean fitExchange = false;
+    protected double tauFraction = 0.25;
+    protected double lambdaS = 0.0;
+    protected double lambdaTau = 0.0;
+    protected boolean useLambda = false;
+    protected double t2Limit = 0.0;
+    protected int nReplicates = 0;
+    protected double sigma = 10.0;
     private final FitResidues fitResidues = new FitResidues();
-    final ReadOnlyObjectProperty<Worker.State> stateProperty = fitResidues.worker.stateProperty();
+    private final ReadOnlyObjectProperty<Worker.State> stateProperty = fitResidues.worker.stateProperty();
     private boolean isProcessing = false;
-    List<String> modelNames = new ArrayList<>();
-    String searchKey = null;
-    AtomicBoolean cancelled = new AtomicBoolean(false);
-    boolean useMedian = false;
-    boolean calcValidation = false;
+    protected List<String> modelNames = new ArrayList<>();
+    protected String searchKey = null;
+    protected AtomicBoolean cancelled = new AtomicBoolean(false);
+    protected boolean useMedian = false;
+    protected boolean calcValidation = false;
 
-    Function<Double, Double> updaterFunction;
-    Function<ProcessingStatus, Double> statusFunction;
+    private Function<Double, Double> updaterFunction;
+    private Function<ProcessingStatus, Double> statusFunction;
 
     public enum BootstrapMode {
         PARAMETRIC,
@@ -57,7 +57,6 @@ public abstract class FitModel {
         }
         return rng;
     }
-
 
     public void setup(String searchKey, List<String> modelNames) {
         this.searchKey = searchKey;
@@ -214,6 +213,10 @@ public abstract class FitModel {
     public void setTauFraction(double value) {
         tauFraction = value;
     }
+
+    public double getSigma() { return sigma; }
+
+    public void setSigma(double sigma) { this.sigma = sigma; }
 
     public boolean fitTau(Map<String, MolDataValues> molDataRes) {
         boolean localFitTau;

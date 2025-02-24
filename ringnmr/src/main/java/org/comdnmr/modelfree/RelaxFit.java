@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.BiFunction;
+
 import org.apache.commons.math3.geometry.euclidean.threed.NotARotationMatrixException;
 import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
 import org.apache.commons.math3.geometry.euclidean.threed.RotationConvention;
@@ -61,6 +63,7 @@ public class RelaxFit {
         {0, 1},
         {1, 1}
     };
+    private static final double DEFAULT_INPUT_SIGMA = 10.0;
 
     double globalTau = 4.0e-9;
     boolean useGlobalTau = false;
@@ -682,28 +685,42 @@ public class RelaxFit {
 
     }
 
-    public PointValuePair fitResidueToModel(double[] start, double[] lower, double[] upper) {
-        Fitter fitter = Fitter.getArrayFitter(this::value);
+    private PointValuePair runFitter(
+        BiFunction<double[], double[][], Double> function,
+        double[] start,
+        double[] lower,
+        double[] upper,
+        double inputSigma
+    ) {
+        Fitter fitter = new Fitter(function);
         try {
-            return fitter.fit(start, lower, upper, 10.0);
+            return fitter.fit(start, lower, upper, inputSigma);
         } catch (Exception ex) {
             ex.printStackTrace();
             return null;
         }
+    }
+
+    public PointValuePair fitResidueToModel(double[] start, double[] lower, double[] upper) {
+        return fitResidueToModel(start, lower, upper, DEFAULT_INPUT_SIGMA);
+    }
+
+    // Telescoped method to allow inputSigma to be specified
+    public PointValuePair fitResidueToModel(double[] start, double[] lower, double[] upper, double inputSigma) {
+        return runFitter(this::value, start, lower, upper, inputSigma);
     }
 
     public PointValuePair fitMultiResidueToModel(double[] start, double[] lower, double[] upper) {
-        Fitter fitter = Fitter.getArrayFitter(this::valueMultiResidue);
-        try {
-            return fitter.fit(start, lower, upper, 10.0);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return null;
-        }
+        return fitMultiResidueToModel(start, lower, upper, DEFAULT_INPUT_SIGMA);
+    }
+
+    // Telescoped method to allow inputSigma to be specified
+    public PointValuePair fitMultiResidueToModel(double[] start, double[] lower, double[] upper, double inputSigma) {
+        return runFitter(this::valueMultiResidue, start, lower, upper, inputSigma);
     }
 
     public PointValuePair fitDiffusion(double[] guesses) {
-        Fitter fitter = Fitter.getArrayFitter(this::valueDMat);
+        Fitter fitter = new Fitter(this::valueDMat);
         double[] lower = new double[guesses.length];
         double[] upper = new double[guesses.length];
         int nDiffPars = diffusionType.getNDiffusionPars();
