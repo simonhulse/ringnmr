@@ -110,7 +110,7 @@ public class CESTEquations {
         // X: array containing two arrays:
         //  omegarf: CEST irradiation frequency (ppm)
         //  omega1: B1 field strength (1/s)
-        // 
+        //
         // pb: population of minor state
         // kex: k12+k21 (1/s)
         // deltaA: offset of A state (angular units, 1/s)
@@ -224,7 +224,7 @@ public class CESTEquations {
         // X: array containing two arrays:
         //  omegarf: CEST irradiation frequency (ppm)
         //  omega1: B1 field strength (1/s)
-        // 
+        //
         // pb: population of minor state
         // kex: k12+k21 (1/s)
         // deltaA: offset of A state (angular units, 1/s)
@@ -567,7 +567,7 @@ public class CESTEquations {
                     boolean[][] foundPos = new boolean[widthinten.length][2];
 
                     // search from peak center in both directions to find
-                    // the peak width50.  Find a value above and below the 
+                    // the peak width50.  Find a value above and below the
                     // half-height and interpolate to get the width50 on each
                     // side.
                     for (int w = 0; w < widthinten.length; w++) {

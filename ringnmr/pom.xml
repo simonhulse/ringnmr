@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>org.comdnmr</groupId>
         <artifactId>ringnmr-parent</artifactId>
         <version>1.23</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-
     <artifactId>ringnmr</artifactId>
     <version>1.23</version>
     <name>ringnmr</name>
     <packaging>jar</packaging>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mainClass>org.comdnmr.fit.chart.MainApp</mainClass>
     </properties>
-
     <repositories>
         <repository>
             <id>central maven repo</id>
@@ -30,22 +26,19 @@
             <url>https://raw.githubusercontent.com/nanalysis/maven-repository/public/</url>
         </repository>
     </repositories>
-
-
-
     <dependencies>
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-core</artifactId>
-            <version>11.4.16-SNAPSHOT</version>
+            <version>11.4.18</version>
             <scope>compile</scope>
         </dependency>
-              <dependency>
-        <groupId>org.python</groupId>
-        <artifactId>jython-slim</artifactId>
-        <version>2.7.2</version>
-      </dependency>
-<dependency>
+        <dependency>
+            <groupId>org.python</groupId>
+            <artifactId>jython-slim</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>4.4</version>
@@ -108,6 +101,21 @@
             <artifactId>ojalgo</artifactId>
             <version>47.2.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.16.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.tensorflow</groupId>
+            <artifactId>tensorflow-core-platform</artifactId>
+            <version>1.0.0-rc.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -131,7 +139,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -217,5 +224,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
