@@ -190,24 +190,22 @@ public class Fitter {
             CMAESOptimizer cmaesOptimizer = new CMAESOptimizer(nSteps, stopFitness, true, diagOnly, 0,
                     random, true,
                     new Checker(tol, tol, nSteps));
-            PointValuePair result = null;
 
             try {
-                result = cmaesOptimizer.optimize(
+                PointValuePair result = cmaesOptimizer.optimize(
                         new CMAESOptimizer.PopulationSize(lambda),
                         new CMAESOptimizer.Sigma(sigma),
                         new MaxEval(2000000),
                         new ObjectiveFunction(this), GoalType.MINIMIZE,
                         new SimpleBounds(normLower, normUpper),
                         new InitialGuess(normGuess));
+                endTime = System.currentTimeMillis();
+                fitTime = endTime - startTime;
+                PointValuePair deNormResult = new PointValuePair(deNormalize(result.getPoint()), result.getValue());
+                return deNormResult;
             } catch (DimensionMismatchException | NotPositiveException | NotStrictlyPositiveException | TooManyEvaluationsException e) {
                 throw new Exception("failure to fit data " + e.getMessage());
             }
-            endTime = System.currentTimeMillis();
-            fitTime = endTime - startTime;
-            PointValuePair deNormResult = new PointValuePair(deNormalize(result.getPoint()), result.getValue());
-
-            return deNormResult;
         }
 
         public PointValuePair refineBOBYQA(double[] guess, double inputSigma) {

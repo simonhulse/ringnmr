@@ -121,9 +121,9 @@ public class MFModelIso1f extends MFModelIso1 {
     @Override
     public double[] getLower() {
         if (includeEx) {
-            return getParValues(tauLower(), 0.0, 0.001, 0.0);
+            return getParValues(tauLower(), 0.0, 0.0, 0.0);
         } else {
-            return getParValues(tauLower(), 0.0, 0.001);
+            return getParValues(tauLower(), 0.0, 0.0);
         }
     }
 

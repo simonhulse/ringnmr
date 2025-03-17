@@ -172,9 +172,9 @@ public class MFModelIso2sf extends MFModelIso2f {
     @Override
     public double[] getLower() {
         if (includeEx) {
-            return getParValues(tauLower(), 0.0, 0.001, 0.0, SLOW_LIMIT, 0.0);
+            return getParValues(tauLower(), 0.0, 0.0, 0.0, SLOW_LIMIT, 0.0);
         } else {
-            return getParValues(tauLower(), 0.0, 0.001, 0.0, SLOW_LIMIT);
+            return getParValues(tauLower(), 0.0, 0.0, 0.0, SLOW_LIMIT);
         }
     }
 
