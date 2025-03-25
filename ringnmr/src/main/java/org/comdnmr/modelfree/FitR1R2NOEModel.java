@@ -443,7 +443,7 @@ public class FitR1R2NOEModel extends FitModel {
                     }
                 }
             }
-            ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, validationScore);
+            ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, validationScore, bestScores);
             result = Optional.of(modelFitResult);
         }
         return result;
