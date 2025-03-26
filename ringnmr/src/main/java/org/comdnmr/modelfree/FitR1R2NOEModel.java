@@ -294,7 +294,7 @@ public class FitR1R2NOEModel extends FitModel {
             }
             OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
             OrderPar orderPar = makeOrderPar(orderParSet, resData, molDataRes, key, bestScore, bestModel, replicateData);
-            ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, null);
+            ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, null, new Score[]{bestScore});
             result = Optional.of(modelFitResult);
         }
         return result;
