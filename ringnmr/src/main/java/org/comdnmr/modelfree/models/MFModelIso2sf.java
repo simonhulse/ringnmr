@@ -22,6 +22,8 @@
  */
 package org.comdnmr.modelfree.models;
 
+import java.lang.Math;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -32,6 +34,9 @@ public class MFModelIso2sf extends MFModelIso2f {
     double tauS;
     double complexityS = 0.0;
     double complexityTau = 0.0;
+
+    private static double psi = Math.log10(30.0e-12);
+    private static double tenToMinusPsi = Math.pow(10.0, -psi);
 
     public MFModelIso2sf(boolean fitTau, double targetTau, double tauFraction,
             boolean includeEx) {
@@ -64,23 +69,20 @@ public class MFModelIso2sf extends MFModelIso2f {
         double s2 = ss2 * sf2;
         for (double omega : omegas) {
             double omega2 = omega * omega;
-            double vM = s2 * tauMx / (1.0 + omega2 * tauMx * tauMx);
-            double vMS = sf2 * (1.0 - ss2) * (tauMx * tauSx * (tauMx + tauSx))
-                    / (tauMx * tauMx * tauSx * tauSx * omega2 + (tauMx + tauSx) * (tauMx + tauSx));
-            double vMF = (1.0 - sf2) * ss2 * (tauMx * tauFx * (tauMx + tauFx))
-                    / (tauMx * tauMx * tauFx * tauFx * omega2 + (tauMx + tauFx) * (tauMx + tauFx));
-            double tauMFS = tauFx * (tauMx + tauSx) + tauMx * tauSx;
-            double vMFS = (1.0 - sf2) * (1.0 - ss2) * (tauFx * tauMx * tauSx * tauMFS)
-                    / (tauFx * tauFx * tauMx * tauMx * tauSx * tauSx * omega2
-                    + tauMFS * tauMFS);
-            J[j++] = 0.4 * (vM + vMS + vMF + vMFS);
+            double vM = s2 / (1.0 + omega * omega * tauMx * tauMx);
+            double vMF = ((1.0 - sf2) * tauFx * (tauMx + tauFx))
+                    / (omega * omega * tauMx * tauMx * tauFx * tauFx + (tauMx + tauFx) * (tauMx + tauFx));
+            double vMS = (sf2 * (1.0 - ss2) * tauSx * (tauMx + tauSx))
+                    / (omega * omega * tauMx * tauMx * tauSx * tauSx + (tauMx + tauSx) * (tauMx + tauSx));
+            J[j++] = 0.4 * tauMx * (vM + vMF + vMS);
         }
-        complexityS
-                = Math.abs(1.0 - sf2)
-                + Math.abs(1.0 - ss2);
-        complexityTau
-                = (Math.log10(tauSx * 1.0e9 + 0.001) + 3.0)
-                + (Math.log10(tauFx * 1.0e9 + 0.001) + 3.0);
+
+        complexityS = Math.abs(1.0 - sf2) + Math.abs(1.0 - ss2);
+        complexityTau =
+            Math.log10(tauSx + tenToMinusPsi) +
+            Math.log10(tauFx + tenToMinusPsi) +
+            2 * psi;
+
         return J;
     }
 
@@ -165,25 +167,26 @@ public class MFModelIso2sf extends MFModelIso2f {
         if (includeEx) {
             return getParValues(targetTau, 0.9, 0.1, 0.9, 0.01, 2.0);
         } else {
-            return getParValues(targetTau, 0.9, SLOW_LIMIT / 5.0, 0.9, SLOW_LIMIT * 5.0);
+            // tauF = 50ps, tauS = 450ps
+            return getParValues(targetTau, 0.9, SLOW_LIMIT / 3.0, 0.9, SLOW_LIMIT * 3.0);
         }
     }
 
     @Override
     public double[] getLower() {
         if (includeEx) {
-            return getParValues(tauLower(), 0.0, 0.0, 0.0, SLOW_LIMIT, 0.0);
+            return getParValues(tauLower(), 0.0, 0.0, 0.0, 0.0, 0.0);
         } else {
-            return getParValues(tauLower(), 0.0, 0.0, 0.0, SLOW_LIMIT);
+            return getParValues(tauLower(), 0.0, 0.0, 0.0, 0.0);
         }
     }
 
     @Override
     public double[] getUpper() {
         if (includeEx) {
-            return getParValues(tauUpper(), 1.0, SLOW_LIMIT, 1.0, targetTau / 2.0, 100.0);
+            return getParValues(tauUpper(), 1.0, targetTau / 2.0, 1.0, targetTau / 2.0, 100.0);
         } else {
-            return getParValues(tauUpper(), 1.0, SLOW_LIMIT, 1.0, targetTau / 2.0);
+            return getParValues(tauUpper(), 1.0, targetTau / 2.0, 1.0, targetTau / 2.0);
 
         }
     }

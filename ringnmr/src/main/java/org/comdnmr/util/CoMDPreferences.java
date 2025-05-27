@@ -356,7 +356,7 @@ public class CoMDPreferences {
         }
         return expEqnMap;
     }
-    
+
     static Map<String, Boolean> getNOEEqnMap() {
         if (noeEqnMap == null) {
             Preferences prefs = getPrefs();//Preferences.userNodeForPackage(ExperimentData.class);
@@ -484,7 +484,7 @@ public class CoMDPreferences {
         }
         return expEqnList;
     }
-    
+
     public static List<String> getActiveNOEEquations() {
         Map<String, Boolean> map = getNOEEqnMap();
         List<String> noeEqnList = new ArrayList<>();

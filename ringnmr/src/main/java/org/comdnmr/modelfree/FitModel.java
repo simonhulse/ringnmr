@@ -36,7 +36,7 @@ public abstract class FitModel {
     private final FitResidues fitResidues = new FitResidues();
     private final ReadOnlyObjectProperty<Worker.State> stateProperty = fitResidues.worker.stateProperty();
     private boolean isProcessing = false;
-    protected List<String> modelNames = new ArrayList<>();
+    public List<String> modelNames = new ArrayList<>();
     protected String searchKey = null;
     protected AtomicBoolean cancelled = new AtomicBoolean(false);
     protected boolean useMedian = false;
