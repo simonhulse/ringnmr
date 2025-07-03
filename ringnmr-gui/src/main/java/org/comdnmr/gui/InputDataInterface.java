@@ -107,7 +107,8 @@ public class InputDataInterface {
 
     record Choices (ChoiceBox<String> typeChoice,
                     ChoiceBox<DataIO.XCONV> xconvChoiceBox, ChoiceBox<DataIO.YCONV> yconvChoiceBox,
-                    TextField tauField, SimpleDoubleProperty tauProperty) {
+                    TextField tauField, SimpleDoubleProperty tauProperty, ChoiceBox<String> errModeChoiceBox,
+                    TextField percentField, SimpleDoubleProperty percentProperty) {
 
     }
 
@@ -127,15 +128,18 @@ public class InputDataInterface {
         ColumnConstraints col3 = new ColumnConstraints(150);
         ColumnConstraints col4 = new ColumnConstraints(150);
         ColumnConstraints col5 = new ColumnConstraints(100);
-        double width = 200 + 100 + 150 + 150 + 100;
+        ColumnConstraints col6 = new ColumnConstraints(120);
+        ColumnConstraints col7 = new ColumnConstraints(100);
+
+        double width = 200 + 100 + 150 + 150 + 100 + 120 + 100;
         inputInfoDisplay.setPrefWidth(width);
         borderPane.setPrefWidth(width);
         inputInfoDisplay.getColumnConstraints().clear();
-        inputInfoDisplay.getColumnConstraints().addAll(col1, col2, col3, col4, col5);
+        inputInfoDisplay.getColumnConstraints().addAll(col1, col2, col3, col4, col5, col6, col7);
         List<PeakList> peakLists = new ArrayList<>();
         List<Choices> choices = new ArrayList<>();
         int delta = 1;
-        String[] headers = {"PeakList", " Type", "XConv", "YConv", "Tau"};
+        String[] headers = {"PeakList", " Type", "XConv", "YConv", "Tau", "ErrorMode", "Percent"};
         int iCol = 0;
         for (String header : headers) {
             inputInfoDisplay.add(new Label(header), iCol, 0);
@@ -159,12 +163,25 @@ public class InputDataInterface {
                 yconvChoiceBox.setValue(DataIO.YCONV.IDENTITY);
                 SimpleDoubleProperty tauProperty = new SimpleDoubleProperty(0.0);
                 TextField tauField = GUIUtils.getDoubleTextField(tauProperty);
+                ChoiceBox<String> errorModeChoiceBox = new ChoiceBox<>();
+
                 inputInfoDisplay.add(tauField, 4, choices.size() + delta);
-                Choices choices1 = new Choices(typeChoice, xconvChoiceBox, yconvChoiceBox, tauField, tauProperty);
+                errorModeChoiceBox.getItems().addAll(Arrays.asList("measured", "percent", "replicates"));
+                errorModeChoiceBox.setValue("measured");
+                inputInfoDisplay.add(errorModeChoiceBox, 5, choices.size() + delta);
+
+                SimpleDoubleProperty percentProperty = new SimpleDoubleProperty(5.0);
+                TextField percentField = GUIUtils.getDoubleTextField(percentProperty);
+                inputInfoDisplay.add(percentField, 6, choices.size() + delta);
+
+                Choices choices1 = new Choices(typeChoice, xconvChoiceBox, yconvChoiceBox, tauField, tauProperty, errorModeChoiceBox, percentField, percentProperty);
                 tauField.setDisable(true);
+                percentField.setDisable(true);
                 typeChoice.setValue("");
                 typeChoice.setOnAction(e -> updateConv(choices1));
+                errorModeChoiceBox.setOnAction(e -> updatePercent(choices1));
                 choices.add(choices1);
+
             }
         });
         CheckBox autoFit = new CheckBox("Auto Fit");
@@ -189,15 +206,23 @@ public class InputDataInterface {
                 choices.yconvChoiceBox().setValue(DataIO.YCONV.RATE);
             }
         }
+    }
+    void updatePercent(Choices choices) {
+        choices.percentField.setDisable(true);
+        switch (choices.errModeChoiceBox().getValue()) {
+            case "percent" -> {
+                choices.percentField.setDisable(false);
+            }
+        }
 
     }
     private void loadFromPeakLists(List<PeakList> peakLists, List<Choices> choices, boolean autoFit) {
-        ExperimentSet experimentSet = new ExperimentSet("peaks", "peaks");
         for (int i = 0; i < peakLists.size(); i++) {
             Choices choice = choices.get(i);
             String type = choice.typeChoice.getValue();
             if (!type.isBlank()) {
                 PeakList peakList = peakLists.get(i);
+                ExperimentSet experimentSet = new ExperimentSet(peakList.getName(), peakList.getName());
                 if (peakList != null) {
                     int peakDim = 1;
                     String nucleus;
@@ -221,7 +246,9 @@ public class InputDataInterface {
                         B0field = dataset.getSf(0);
                         temperature = dataset.getTempK();
                     }
-                    loadFromPeakList(experimentSet, peakList, type, nucleus, B0field, temperature, tau, choice.xconvChoiceBox.getValue(), choice.yconvChoiceBox.getValue(), autoFit);
+                    double percent = choice.percentProperty.doubleValue();
+                    DataIO.ErrorMode errorMode = new DataIO.ErrorMode(choice.errModeChoiceBox.getValue(), percent);
+                    loadFromPeakList(experimentSet, peakList, type, nucleus, B0field, temperature, tau, choice.xconvChoiceBox.getValue(), choice.yconvChoiceBox.getValue(), errorMode, autoFit);
                 }
             }
         }
@@ -726,12 +753,13 @@ public class InputDataInterface {
             yConv = DataIO.YCONV.RATE;
             xConv = DataIO.XCONV.TAU4;
         }
+        DataIO.ErrorMode errorMode = new DataIO.ErrorMode(errModeChoice.getValue(), Double.parseDouble(errPercentTextField.getText()));
         ExperimentSet experimentSet = new ExperimentSet("peaks", "peaks");
-        loadFromPeakList(experimentSet, peakList, expMode, nucName, b0Field, temperatureK, tau, xConv, yConv, false);
+        loadFromPeakList(experimentSet, peakList, expMode, nucName, b0Field, temperatureK, tau, xConv, yConv, errorMode, false);
     }
 
     void loadFromPeakList(ExperimentSet experimentSet, PeakList peakList, String expMode, String nucName, double b0Field, double temperatureK, double tau,
-                          DataIO.XCONV xConv, DataIO.YCONV yConv,
+                          DataIO.XCONV xConv, DataIO.YCONV yConv, DataIO.ErrorMode errorMode,
                           boolean autoFit) {
         expMode = expMode.toLowerCase();
         if (peakList != null) {
@@ -778,7 +806,7 @@ public class InputDataInterface {
 
             try {
                 DataIO.loadFromPeakList(peakList, expData, experimentSet,
-                        xConv, yConv, dynSource);
+                        xConv, yConv, errorMode, dynSource);
                 ResidueChart reschartNode = PyController.mainController.getActiveChart();
                 if (reschartNode == null) {
                     reschartNode = PyController.mainController.addChart();

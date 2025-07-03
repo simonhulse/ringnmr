@@ -1,10 +1,65 @@
 package org.comdnmr.modelfree;
 
+import org.apache.commons.math3.optim.PointValuePair;
+import org.comdnmr.data.Fitter;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class SpectralDensityCalculator {
+
+    R1R2NOEDataValue relaxDataValue;
+
+    public double value(double[] pars, double[][] values) {
+        RelaxEquations relaxEquation = relaxDataValue.relaxObj;
+        double ratio = RelaxEquations.GAMMA_N/ RelaxEquations.GAMMA_H;
+        double f1 = 1.0 - ratio;
+        double f2 = 1.0 + ratio;
+
+
+        double jH = pars[2];
+        double jHmN = jH  / Math.pow(f1,1.5);
+        double jHpN = jH /  Math.pow(f2,1.5);
+
+        double[] jValues = {pars[0], pars[1], jHmN, jH, jHpN};
+        double r1 = relaxEquation.R1(jValues);
+        double r2 = relaxEquation.R2(jValues, 0.0);
+        double noe = relaxEquation.NOE(jValues);
+
+        return relaxDataValue.score2(r1, r2, noe);
+    }
+
+    public PointValuePair fit(R1R2NOEDataValue dValue) {
+        this.relaxDataValue = dValue;
+        Fitter fitter = Fitter.getArrayFitter(this::value);
+        double[][] jValues = calcJR1R2NOE(List.of(dValue));
+        double j0 = jValues[1][0];
+        double jN = jValues[1][2];
+        double jH = jValues[1][1];
+        double ratio = RelaxEquations.GAMMA_N/ RelaxEquations.GAMMA_H;
+        double f1 = 1.0 - ratio;
+        double f2 = 1.0 + ratio;
+
+        double[] start = {j0, jN, jH};
+        double[] lower = {j0 * 0.5, jN*0.5, jH*0.5};
+        double[] upper = {j0 * 1.5, jN * 1.5, jH * 1.5};
+
+        try {
+            PointValuePair pointValuePair = fitter.fit(start, lower, upper, 10.0);
+            double[] j = pointValuePair.getPoint();
+
+            double jHr = j[2];
+            double jHmN = jHr  / Math.pow(f1,1.5);
+            double jHpN = jHr /  Math.pow(f2,1.5);
+
+            double[] jResult = {j[0], j[1], jHmN, jHr, jHpN};
+            return new PointValuePair(jResult, pointValuePair.getValue());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
 
     public static double[][] calcJR1R2NOE(List<RelaxDataValue> dataValues) {
         boolean useAverage = false;

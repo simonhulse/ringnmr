@@ -269,9 +269,9 @@ public class PyController implements Initializable {
     static Random rand = new Random();
     File initialDir = null;
     SeriesComparator seriesComparator = new SeriesComparator();
-
+    Map<Atom, CorrelationTime.TauR1R2Result> tauR1R2ResultMap = new HashMap<>();
     Function<String, String> nmrfxFunction;
-
+    List<MenuData> menuDataList = new ArrayList<>();
     @FXML
     private void pyAction(ActionEvent event) {
         Node node = (Node) event.getSource();
@@ -1348,12 +1348,12 @@ public class PyController implements Initializable {
         ValueSet valueSet1 = ChartUtil.getResidueProperty(r1SetName);
         ValueSet valueSet2 = ChartUtil.getResidueProperty(r2SetName);
         Map<String, Double> result = Collections.EMPTY_MAP;
-        if (valueSet1 instanceof ExperimentSet) {
-            if (valueSet2 instanceof ExperimentSet) {
-                ExperimentSet r1Set = (ExperimentSet) valueSet1;
-                ExperimentSet r2Set = (ExperimentSet) valueSet2;
+        if ((valueSet1 instanceof ExperimentSet r1Set) && (valueSet2 instanceof ExperimentSet r2Set)) {
+            result = CorrelationTime.estimateTau(r1Set, r2Set);
+            tauR1R2ResultMap = CorrelationTime.estimateTauPerResidue(r1Set, r2Set);
+        } else if ((valueSet1 instanceof RelaxationSet r1Set) && (valueSet2 instanceof RelaxationSet r2Set)) {
                 result = CorrelationTime.estimateTau(r1Set, r2Set);
-            }
+                tauR1R2ResultMap = CorrelationTime.estimateTauPerResidue(r1Set, r2Set);
         } else {
             FitR1R2NOEModel fitR1R2NOEModel = new FitR1R2NOEModel();
             result = fitR1R2NOEModel.estimateTau();
@@ -1363,6 +1363,15 @@ public class PyController implements Initializable {
             r1MedianField.setText(String.format("%.3f", result.get("R1")));
             r2MedianField.setText(String.format("%.3f", result.get("R2")));
             tauCalcField.setText(String.format("%.2f", result.get("tau")));
+        }
+    }
+
+    public void writeR1R2Tau() throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save R1/R2/Tau File");
+        File file = fileChooser.showSaveDialog(MainApp.primaryStage);
+        if (file != null) {
+            DataIO.writeR1R2Tau(file, tauR1R2ResultMap);
         }
     }
 
@@ -1706,7 +1715,7 @@ public class PyController implements Initializable {
         Collection<String> setNames = ChartUtil.getResiduePropertyNames();
         for (var setName : setNames) {
             ValueSet valueSet = ChartUtil.getResidueProperty(setName);
-            if (valueSet instanceof ExperimentSet) {
+            if (valueSet instanceof ExperimentSet || valueSet instanceof RelaxationSet) {
                 t1Choice.getItems().add(setName);
                 t2Choice.getItems().add(setName);
             }
@@ -1749,6 +1758,7 @@ public class PyController implements Initializable {
         makeT1T2Menu();
         experimentalDataAxisMenu.getItems().clear();
         moleculeDataAxisMenu.getItems().clear();
+        menuDataList.clear();
         addMoleculeDataToAxisMenu();
         addResiduePropertiesToAxisMenu();
     }
@@ -1947,8 +1957,26 @@ public class PyController implements Initializable {
         }
     }
 
+    record MenuData(String expMode, String setName, String eqnName, String state, String parName) {}
+
+    void showAllR() {
+        System.out.println("show all " + menuDataList);
+
+        List<String> chartNames = menuDataList.stream().map( menuData -> menuData.setName()).toList();
+        var chartMap = setupCharts(chartNames);
+
+        for (MenuData menuData : menuDataList) {
+            activeChart = chartMap.get(menuData.setName());
+            setYAxisType(menuData.expMode, menuData.setName, menuData.eqnName(), menuData.state(),  menuData.parName(), true);
+        }
+        sortChartSeries();
+        resizeBarPlotCanvas();
+    }
     void addResiduePropertiesToAxisMenu() {
         Collection<String> setNames = ChartUtil.getResiduePropertyNames();
+        MenuItem addAllItem = new MenuItem("All");
+        addAllItem.setOnAction(e -> showAllR());
+        experimentalDataAxisMenu.getItems().add(addAllItem);
         setNames.stream().sorted().forEach(setName -> {
             var valueSet = ChartUtil.getResidueProperty(setName);
             if (valueSet instanceof ExperimentSet) {
@@ -1976,6 +2004,10 @@ public class PyController implements Initializable {
                             MenuItem cmItem1 = new MenuItem(parType);
                             cmItem1.setOnAction(e -> setYAxisType(expMode, setName, equationName, "0:0:0", parType, true));
                             cascade.getItems().add(cmItem1);
+                            if (parType.equals("R") || parType.equals("Kex")) {
+                                MenuData menuData = new MenuData(expMode, setName, "best", "0:0:0", parType);
+                                menuDataList.add(menuData);
+                            }
                         } else {
 
                             Menu cascade2 = new Menu(parType);
@@ -1992,6 +2024,10 @@ public class PyController implements Initializable {
                                 cascade2.getItems().add(cmItem1);
 
                             } else {
+                                if (parType.equals("R") || parType.equals("Kex")) {
+                                    MenuData menuData = new MenuData(expMode, setName, "best", "0:0:0", parType);
+                                    menuDataList.add(menuData);
+                                }
 
                                 for (String equationName : equationNames) {
                                     if ((stateStrings.size() < 2) || parType.equals("RMS") || parType.equals("AIC") || parType.equals("Equation")) {
@@ -2690,19 +2726,16 @@ public class PyController implements Initializable {
                 Map<String, SpectralDensity> spectralDensityMap = atom.getSpectralDensity();
                 var sdData = ChartUtil.getSpectralDensityData(spectralDensityMap);
                 allData.addAll(sdData);
-                List<Double> xV = new ArrayList<>();
-                List<Double> yV = new ArrayList<>();
-                List<Double> eV = new ArrayList<>();
+                List<DataIO.XYErrValue> xyErrValueList = new ArrayList<>();
                 for (var v : sdData) {
                     var d = v.getData();
                     for (var dv : d) {
                         if (dv instanceof XYEValue xye) {
-                            xV.add(xye.getXValue());
-                            yV.add(xye.getYValue());
-                            eV.add(xye.getError());
+                            DataIO.XYErrValue xyErrValue = new DataIO.XYErrValue(xye.getXValue(), xye.getYValue(), xye.getError());
+                            xyErrValueList.add(xyErrValue);
                         }
                     }
-                    ExperimentData sdExpData = new ExperimentData(null, resonanceSource, xV, yV, eV);
+                    ExperimentData sdExpData = new ExperimentData(null, resonanceSource, xyErrValueList);
                     experimentalDataSets.add(sdExpData);
                 }
                 var orderPars = atom.getOrderPars();

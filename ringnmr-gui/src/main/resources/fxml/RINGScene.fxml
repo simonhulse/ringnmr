@@ -37,6 +37,7 @@
                         <MenuItem text="Save Analysis..." onAction="#saveParameters"/>
                         <MenuItem text="Save R1/R2/NOE..." onAction="#saveR1R2NOE" fx:id="saveR1R2NOE"/>
                         <MenuItem text="Save Model Free..." onAction="#saveOrderParameters"/>
+                        <MenuItem text="Save R1/R2/Tau..." onAction="#writeR1R2Tau"/>
                         <MenuItem text="Save Spectral Densities..." onAction="#saveSpectralDensities"
                                   fx:id="saveSpectralDensities"/>
                     </Menu>

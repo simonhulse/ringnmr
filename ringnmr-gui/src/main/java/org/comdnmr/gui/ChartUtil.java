@@ -49,7 +49,6 @@ import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Transform;
 import org.comdnmr.eqnfit.CurveFit;
 import org.comdnmr.data.DataIO;
-import org.comdnmr.data.DynamicsSource;
 import org.comdnmr.data.Experiment;
 import org.comdnmr.eqnfit.PlotEquation;
 import org.comdnmr.data.ExperimentResult;
@@ -61,7 +60,6 @@ import org.nmrfx.chart.XYValue;
 import org.nmrfx.chemistry.Residue;
 import org.nmrfx.chemistry.io.MoleculeIOException;
 import org.nmrfx.chemistry.relax.*;
-import org.nmrfx.peaks.PeakList;
 import org.nmrfx.star.ParseException;
 
 public class ChartUtil {
@@ -597,36 +595,6 @@ public class ChartUtil {
         PyController.mainController.setYAxisType(resProp.getExpMode(), resProp.name(), "best", "0:0:0", parName, true);
         reschartNode.setResProps(resProp);
         PyController.mainController.setControls();
-    }
-
-    public static void loadPeakList(PeakList peakList) {
-        if (peakList == null) {
-            return;
-        }
-        ResidueChart reschartNode = PyController.mainController.getActiveChart();
-        if (reschartNode == null) {
-            reschartNode = PyController.mainController.addChart();
-
-        }
-        DynamicsSource dynamicsSourceFactory = new DynamicsSource(true, true, true, true);
-
-        ExperimentSet resProp = DataIO.processPeakList(peakList, dynamicsSourceFactory);
-        if (resProp != null) {
-            valueSets.put(resProp.name(), resProp);
-            String parName = "Kex";
-            String expMode = resProp.getExpMode();
-            if (expMode.equals("r1") || expMode.equals("r2") || expMode.equals("rq") || expMode.equals("rap")) {
-                parName = "R";
-            } else if (resProp.getExpMode().equals("noe")) {
-                parName = "NOE";
-            }
-            ObservableList<DataSeries> data = ChartUtil.getParMapData(resProp.name(), "best", "0:0:0", parName);
-            PyController.mainController.setCurrentExperimentSet(resProp);
-            PyController.mainController.makeAxisMenu();
-            PyController.mainController.setYAxisType(resProp.getExpMode(), resProp.name(), "best", "0:0:0", parName, true);
-            reschartNode.setResProps(resProp);
-            PyController.mainController.setControls();
-        }
     }
 
     public static void loadMoleculeFile(String fileName, String type) throws MoleculeIOException, ParseException {

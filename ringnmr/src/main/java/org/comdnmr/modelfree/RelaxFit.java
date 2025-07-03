@@ -91,6 +91,13 @@ public class RelaxFit {
     public void setFitJ(boolean value) {
         fitJ = value;
     }
+    public void setLogJMode(boolean value) {
+        logJMode = value;
+    }
+
+    public boolean getLogJMode() {
+        return logJMode;
+    }
 
     public double getLambdaS() {
         return useLambda ? lambdaS : 0.0;
@@ -383,11 +390,11 @@ public class RelaxFit {
                 double delta = jCalc[i] - jValues[1][i];
                 jErr = jValues[2][i];
                 sumSq += weights[i] * (delta * delta) / (jErr * jErr);
-
             }
 
-          // System.out.printf("%3d %11.5g %11.5g %11.5g %11.5g %11.5g %11.5g\n", i, jValues[0][i], jCalc[i], jValues[1][i], jErr, weights[i], sumSq);
+         //  System.out.printf("%3d %11.5g %11.5g %11.5g %11.5g %11.5g %11.5g\n", i, jValues[0][i], jCalc[i], jValues[1][i], jErr, weights[i], sumSq);
         }
+       // System.out.println(Math.sqrt(sumSq/jCalc.length));
         double complexityS = testModel.getComplexityS();
         double complexityTau = testModel.getComplexityTau();
         return new double[]{sumSq, complexityS, complexityTau, jCalc.length};
