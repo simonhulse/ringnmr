@@ -100,7 +100,8 @@ public class SSR1RhoFitter implements EquationFitter {
         boolean useWeight = options.getWeightFit();
         CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                 useNonParametric, sRadius, fRadius, tol, useWeight);
-        FitResult res = getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates, fitQuality, simPars, true, curveStats);
+        double[][] allExtras = {{10.0}};
+        FitResult res = getResults(this, eqn, parNames, dynSources, map, states, allExtras, nGroupPars, pars, errEstimates, fitQuality, simPars, true, curveStats);
         return Optional.of(res);
     }
 

@@ -103,7 +103,7 @@ public class SSR1RhoFitFunction extends FitFunction {
 
         IntStream.range(0, nSim).parallel().forEach(i -> {
 //        IntStream.range(0, nSim).forEach(i -> {
-            ExpFitFunction rDisp = new ExpFitFunction(options, xValues, yPred, errValues, idNums);
+            SSR1RhoFitFunction rDisp = new SSR1RhoFitFunction(options, xValues, yPred, errValues, idNums);
             rDisp.setEquation(equation.getName());
             double[] newY = new double[yValues.length];
             for (int k = 0; k < yValues.length; k++) {
