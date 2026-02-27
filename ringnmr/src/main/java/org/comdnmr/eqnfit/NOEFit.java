@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  *
@@ -101,7 +102,7 @@ public class NOEFit implements EquationFitter {
 
 
     @Override
-    public FitResult doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
+    public Optional<FitResult> doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
         setupFit(eqn);
 
         int[][] map = noeModel.getMap();
@@ -115,23 +116,16 @@ public class NOEFit implements EquationFitter {
 //        System.out.println("dofit guesses = " + guesses);
         double[][] boundaries = noeModel.boundaries(guesses);
         double sigma = options.getStartRadius();
-        PointValuePair result = noeModel.refine(guesses, boundaries[0], boundaries[1],
+        var resultOpt = noeModel.refine(guesses, boundaries[0], boundaries[1],
                 sigma, options.getOptimizer());
+        PointValuePair result;
+        if (resultOpt.isEmpty()) {
+            return Optional.empty();
+        } else {
+            result = resultOpt.get();
+        }
         double[] pars = result.getPoint();
-        /*
-        for (int i = 0; i < map.length; i++) {
-            for (int j = 0; j < map[i].length; j++) {
-                System.out.printf(" %3d", map[i][j]);
-            }
-            System.out.println("");
-        }
 
-        System.out.print("Fit pars ");
-        for (int i = 0; i < pars.length; i++) {
-            System.out.printf(" %.3f", pars[i]);
-        }
-        System.out.println("");
-         */
         FitQuality fitQuality = noeModel.getFitQuality(pars);
 
 
@@ -140,17 +134,20 @@ public class NOEFit implements EquationFitter {
         sigma /= 2.0;
 
         String[] parNames = noeModel.getParNames();
-        double[] errEstimates;
+        double[] errEstimates  = new double[pars.length];
         double[][] simPars = null;
         if (FitFunction.getCalcError()) {
             long startTime = System.currentTimeMillis();
-            errEstimates = noeModel.simBoundsStream(pars.clone(),
+            var errOpt = noeModel.simBoundsStream(pars.clone(),
                     boundaries[0], boundaries[1], sigma, options);
+            if (errOpt.isPresent()) {
+                return Optional.empty();
+            } else {
+                errEstimates = errOpt.get();
+            }
             long endTime = System.currentTimeMillis();
             errTime = endTime - startTime;
             simPars = noeModel.getSimPars();
-        } else {
-            errEstimates = new double[pars.length];
         }
         String refineOpt = options.getOptimizer();
         String bootstrapOpt = options.getBootStrapOptimizer();
@@ -165,7 +162,7 @@ public class NOEFit implements EquationFitter {
         boolean useWeight = options.getWeightFit();
         CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                 useNonParametric, sRadius, fRadius, tol, useWeight);
-        return getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates,fitQuality, simPars, true, curveStats);
+        return Optional.of(getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates,fitQuality, simPars, true, curveStats));
     }
 
     @Override

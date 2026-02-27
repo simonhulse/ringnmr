@@ -53,19 +53,18 @@ public class MFModelIso2s extends MFModelIso1s {
 
     @Override
     public double[] calc(double[] omegas) {
-        double tauMx = tauM * 1.0e-9;
-        double tauSx = tauS * 1.0e-9;
         double[] J = new double[omegas.length];
         int j = 0;
         double ss2 = this.ss2 / sN;
         double sf2 = this.sf2;
         double s2 = sf2 * ss2;
         for (double omega : omegas) {
+            omega *= 1.0e-9;
             double omega2 = omega * omega;
-            double taus = tauMx * tauSx / (tauMx + tauSx);
-            double value1 = s2 * tauMx / (1.0 + omega2 * tauMx * tauMx);
+            double taus = tauM * tauS / (tauM + tauS);
+            double value1 = s2 * tauM / (1.0 + omega2 * tauM * tauM);
             double value2 = (sf2 - s2) * (taus) / (1.0 + omega2 * taus * taus);
-            J[j++] = 0.4 * (value1 + value2);
+            J[j++] = 0.4e-9 * (value1 + value2);
         }
         return J;
     }

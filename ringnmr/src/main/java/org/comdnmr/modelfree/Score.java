@@ -1,5 +1,7 @@
 package org.comdnmr.modelfree;
 
+import java.util.Optional;
+
 public class Score {
 
     final double rss;
@@ -65,9 +67,26 @@ public class Score {
         return 2 * nPars + chiSq();
     }
 
-    public double aicc() {
+    public Optional<Double> aicc() {
+        return aiccv();
+    }
+
+    public Optional<Double> aiccnv() {
         int k = nPars;
-        return aic() + 2.0 * k * (k + 1) / (nValues - k - 1);
+        if ((nValues - k -1) < 1) {
+            return Optional.empty();
+        } else {
+            return Optional.of(aic() + 2.0 * k * (k + 1) / (nValues - k - 1));
+        }
+    }
+
+    public Optional<Double> aiccv() {
+        int k = nPars;
+        if ((nValues - k) < 1) {
+            return Optional.empty();
+        } else {
+            return Optional.of(aic() + 2.0 * (k + 1) * (k + 2) / (nValues - k));
+        }
     }
 
     public double chiSq() {

@@ -202,11 +202,11 @@ public class PreferencesController implements Initializable {
 
         DoubleRangeOperationItem nSigmaItem = new DoubleRangeOperationItem(prefSheet, (obs, oldV, newV) -> {
             RelaxEquations.setSigma( "N", (Double) newV * -1.0e-6);
-        }, RelaxEquations.getSigma("N") * -1.0e6, 100, 220, "ModelFree", "N CSA", "N Chemical Shift Anisotropy (* -1.0)");
+        }, RelaxEquations.getSigma("N") * -1.0e6, 10, 220, "ModelFree", "N CSA", "N Chemical Shift Anisotropy (* -1.0)");
 
         DoubleRangeOperationItem cSigmaItem = new DoubleRangeOperationItem(prefSheet, (obs, oldV, newV) -> {
             RelaxEquations.setSigma("C", (Double) newV * -1.0e-6);
-        }, RelaxEquations.getSigma("C") * -1.0e6, 100, 220, "ModelFree", "C CSA", "C Chemical Shift Anisotropy (* -1.0)");
+        }, RelaxEquations.getSigma("C") * -1.0e6, 10, 220, "ModelFree", "C CSA", "C Chemical Shift Anisotropy (* -1.0)");
 
         prefSheet.getItems().addAll(nProcessesItem, refFieldItem, maxFreqItem, rexRatioItem, deltaABdiffItem,
                 absValueItem, nonParametricItem, nSamplesItem, optimizerChoiceItem, bootStrapOptimizerrChoiceItem,

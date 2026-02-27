@@ -14,13 +14,17 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 package org.comdnmr.gui;
 
 import java.io.BufferedReader;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.canvas.Canvas;
+
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,16 +34,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Orientation;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
 
 import javafx.scene.paint.Color;
-import org.comdnmr.data.Experiment;
+import javafx.stage.FileChooser;
 import org.comdnmr.eqnfit.PlotEquation;
 import org.comdnmr.data.ExperimentData;
-import org.comdnmr.data.ExperimentSet;
 import org.nmrfx.chart.Axis;
 import org.nmrfx.chart.DataSeries;
 
@@ -56,20 +60,20 @@ public class PlotData extends XYCanvasChart {
     String fileName;
     ObservableList<GUIPlotEquation> plotEquations = FXCollections.observableArrayList();
 
-    public static final Color[] colors = {
-        Color.web("#1b9e77"),
-        Color.web("#d95f02"),
-        Color.web("#7570b3"),
-        Color.web("#e7298a"),
-        Color.web("#66a61e"),
-        Color.web("#e6ab02"),
-        Color.web("#a6761d"),
-        Color.web("#666666"),
-        Color.web("#ff7f00"),
-        Color.web("#6a3d9a"),};
+    protected static final Color[] colors = {
+            Color.web("#1b9e77"),
+            Color.web("#d95f02"),
+            Color.web("#7570b3"),
+            Color.web("#e7298a"),
+            Color.web("#66a61e"),
+            Color.web("#e6ab02"),
+            Color.web("#a6761d"),
+            Color.web("#666666"),
+            Color.web("#ff7f00"),
+            Color.web("#6a3d9a"),};
 
-    public PlotData(Canvas canvas, final Axis... AXIS) {
-        super(canvas, AXIS);
+    public PlotData(Canvas canvas, final Axis... axes) {
+        super(canvas, axes);
         init();
     }
 
@@ -80,45 +84,31 @@ public class PlotData extends XYCanvasChart {
     }
 
     void init() {
-        //xAxis.setAutoRanging(true);
-        //yAxis.setAutoRanging(true);
         xAxis.setUpperBound(1000.0);
         yAxis.setUpperBound(60.0);
         yAxis.setZeroIncluded(true);
         xAxis.setLabel("Time (s)");
         yAxis.setLabel("Intensity");
-        xAxis.setLabel("\u03BD (cpmg)");
-        yAxis.setLabel("R2 (\u03BD)");
+        xAxis.setLabel("ν (cpmg)");
+        yAxis.setLabel("R2 (ν)");
         plotEquations.addListener((ListChangeListener) (e -> drawChart()));
-        getCanvas().setOnMouseClicked(e -> mouseClicked(e));
-//        setTitle("CPMG");
-//        setPrefHeight(200);
-//        setLegendSide(Side.BOTTOM);
-//        setLegendVisible(true);
-//        xAxis.setAnimated(false);
-//        yAxis.setAnimated(false);
-//        setAnimated(false);
-//        setNodeListeners(this);
-//        setHorizontalZeroLineVisible(false);
-//        setVerticalZeroLineVisible(false);
+        getCanvas().setOnMouseClicked(this::mouseClicked);
     }
 
+    @Override
     public void setNames(String title, String xName, String yName, String yPad) {
         setTitle(title);
         xAxis.setLabel(xName);
         yAxis.setLabel(yName);
     }
 
+    @Override
     public void setBounds(double xLower, double xUpper, double yLower, double yUpper, double xtick, double ytick) {
-//        xAxis.setAutoRanging(false);
-//        yAxis.setAutoRanging(false);
         xAxis.setLowerBound(xLower);
         xAxis.setUpperBound(xUpper);
         yAxis.setLowerBound(yLower);
         yAxis.setUpperBound(yUpper);
         drawChart();
-//        xAxis.setTickUnit(xtick);
-//        yAxis.setTickUnit(ytick);
     }
 
     void mouseClicked(MouseEvent e) {
@@ -132,13 +122,11 @@ public class PlotData extends XYCanvasChart {
     }
 
     public int getNumPlots() {
-        int numPlots = getData().size();
-        return numPlots;
+        return getData().size();
     }
 
     public int getNumEquations() {
-        int numEquations = plotEquations.size();
-        return numEquations;
+        return plotEquations.size();
     }
 
     public void setEquations(List<GUIPlotEquation> plotEquations) {
@@ -155,11 +143,7 @@ public class PlotData extends XYCanvasChart {
     @Override
     public void drawChart() {
         super.drawChart();
-        try {
-            paintLines();
-        } catch (GraphicsIOException ex) {
-            ex.printStackTrace();
-        }
+        paintLines();
     }
 
     protected void exportVectorGraphics(SVGGraphicsContext svgGC) throws GraphicsIOException {
@@ -173,29 +157,26 @@ public class PlotData extends XYCanvasChart {
 
     void dumpNode(String seriesName, XYValue value) {
         Object extraValue = value.getExtraValue();
-        if (extraValue instanceof ExperimentData.DataValue) {
-            ExperimentData.DataValue dataValue = (ExperimentData.DataValue) extraValue;
+        if (extraValue instanceof ExperimentData.DataValue dataValue) {
             PyController.mainController.selectTableRow(seriesName, dataValue.getIndex());
         }
     }
 
     public double[] getXBounds() {
-        double[] bounds = {xAxis.getLowerBound(), xAxis.getUpperBound()};
-        return bounds;
+        return new double[]{xAxis.getLowerBound(), xAxis.getUpperBound()};
     }
 
     public double[] getYBounds() {
-        double[] bounds = {yAxis.getLowerBound(), yAxis.getUpperBound()};
-        return bounds;
+        return new double[]{yAxis.getLowerBound(), yAxis.getUpperBound()};
     }
 
-    void paintLines() throws GraphicsIOException {
+    void paintLines() {
         GraphicsContext gCC = getCanvas().getGraphicsContext2D();
         GraphicsContextInterface gC = new GraphicsContextProxy(gCC);
         paintLines(gC);
     }
 
-    void paintLines(GraphicsContextInterface gC) throws GraphicsIOException {
+    void paintLines(GraphicsContextInterface gC) {
 
         int nIncr = 256;
         double[] xValues = new double[nIncr];
@@ -214,9 +195,7 @@ public class PlotData extends XYCanvasChart {
                 double xValue = min + (i + 1) * delta;
                 double x = xAxis.getDisplayPosition(xValue);
                 ax[0] = xValue;
-                for (int j = 0; j < extras.length; j++) {
-                    ax[j + 1] = extras[j];
-                }
+                System.arraycopy(extras, 0, ax, 1, extras.length);
                 double yValue = plotEquation.calculate(ax);
                 yValue /= plotEquation.getScaleValue();
                 double y = yAxis.getDisplayPosition(yValue);
@@ -231,11 +210,10 @@ public class PlotData extends XYCanvasChart {
     private ObservableList<DataSeries> loadChartData(String[] residues) throws IOException {
         ObservableList<DataSeries> data = FXCollections.observableArrayList();
         Path path = Paths.get(".", fileName);
-        DataSeries series = null;
+        DataSeries series;
         simData.clear();
-        boolean inData = false;
         double[] xValues = null;
-        double[] yValues = null;
+        double[] yValues;
         try (BufferedReader fileReader = Files.newBufferedReader(path)) {
             String line = fileReader.readLine();
             double field = Double.parseDouble(line.trim());
@@ -247,9 +225,11 @@ public class PlotData extends XYCanvasChart {
                     break;
                 }
                 String sline = line.trim();
+                if (sline.isEmpty() || sline.startsWith("#")) {
+                    continue;
+                }
                 String[] sfields = sline.split("\t");
-                if (line.startsWith("#")) {
-                } else if (line.startsWith("vCPMG")) {
+                if (line.startsWith("vCPMG")) {
                     xValues = new double[sfields.length - 2];
                     for (int i = 2; i < sfields.length; i++) {
                         xValues[i - 2] = Double.parseDouble(sfields[i]);
@@ -266,13 +246,10 @@ public class PlotData extends XYCanvasChart {
                         //-math.log(v/ref)/tCPMG
                     }
                     for (int i = 0; i < xValues.length; i++) {
-                        if (series != null) {
-                            double x = xValues[i];
-                            double y = yValues[i];
-                            XYValue dataPoint = new XYValue(x, y);
-                            series.getData().add(dataPoint);
-                        }
-
+                        double x = xValues[i];
+                        double y = yValues[i];
+                        XYValue dataPoint = new XYValue(x, y);
+                        series.getData().add(dataPoint);
                     }
                 }
             }
@@ -291,8 +268,8 @@ public class PlotData extends XYCanvasChart {
             for (int i = 0; i < numPlots; i++) {
                 HashMap<String, Object> plotDatum = new HashMap<>();
                 plotDatum.put("rawData", returnLine(i));
-                plotDatum.put("graphTitle", getSeriesName(i).replace(" ","_")
-                        .replace(".","_"));
+                plotDatum.put("graphTitle", getSeriesName(i).replace(" ", "_")
+                        .replace(".", "_"));
                 plotDatum.put("fittedData", returnEquation(i));
                 plottedData[i] = plotDatum;
             }
@@ -315,7 +292,7 @@ public class PlotData extends XYCanvasChart {
         double yMin = yAxis.lowerBoundProperty().getValue();
         double yMax = yAxis.upperBoundProperty().getValue();
 
-        List<Double> ranges = new ArrayList(Arrays.asList(xMin, xMax, yMin, yMax));
+        List<Double> ranges = new ArrayList<>(Arrays.asList(xMin, xMax, yMin, yMax));
         graphData.put("title", title);
         graphData.put("xlabel", xLabel);
         graphData.put("ylabel", yLabel);
@@ -324,25 +301,17 @@ public class PlotData extends XYCanvasChart {
         return graphData;
     }
 
-//    void doLine(Series<Integer, Double> series, String line, double scale) {
-//        String[] fields = line.split(" ");
-//        Integer x = Integer.parseInt(fields[0]);
-//        Double y = Double.parseDouble(fields[1]) * scale;
-//        series.getData().add(new XYChart.Data(x, y));
-//    }
     private double getScaledError(XYValue item) {
         Object extraValue = item.getExtraValue();
         double errorY = 0.0;
-        if (extraValue instanceof ExperimentData.DataValue) {
-            ExperimentData.DataValue dataValue = (ExperimentData.DataValue) extraValue;
+        if (extraValue instanceof ExperimentData.DataValue dataValue) {
             double error = dataValue.getError();
             double yValue = dataValue.getY();
             double errorY2 = yAxis.getDisplayPosition(yValue + error);
             double errorY1 = yAxis.getDisplayPosition(yValue - error);
             errorY = Math.abs(errorY2 - errorY1) / 2.0;
-        } else if (extraValue instanceof Double) {
-            double yValue = ((Double) item.getYValue());
-            double error = (Double) extraValue;
+        } else if (extraValue instanceof Double error) {
+            double yValue = (item.getYValue());
             double errorY2 = yAxis.getDisplayPosition(yValue + error);
             double errorY1 = yAxis.getDisplayPosition(yValue - error);
             errorY = Math.abs(errorY2 - errorY1) / 2.0;
@@ -351,45 +320,17 @@ public class PlotData extends XYCanvasChart {
 
     }
 
-    protected void seriesAdded(DataSeries series, int seriesIndex) {
-        // fixme  why cest
-//        ExperimentSet experimentSet = ChartUtil.getResidueProperty("cest");
-//        Experiment expData = null;
-//        if (experimentSet != null) {
-//            expData = experimentSet.getExperimentData("cest"); // fixme
-//        }
-        for (int j = 0; j < series.getData().size(); j++) {
-            XYValue item = (XYValue) series.getData().get(j);
-        }
-//        if (expData != null) {
-//                cestLegend(expData.getExtras());
-//            }
-    }
-
-//    protected void cestLegend(List<Double> b1fields) {
-//        super.updateLegend();
-//        Set<Node> items = b1fields;
-//        int it = 0;
-//        for (Node item : items) {
-//            Label label = (Label) item;
-//            Circle circle = new Circle(4.0);
-//            circle.setFill(colors[Math.min(colors.length - 1, it)]);
-//            label.setGraphic(circle);
-//            it++;
-//        }
-//    }
     public String getSeriesName(int iSeries) {
         ObservableList<DataSeries> data = getData();
         DataSeries series = data.get(iSeries);
-        String seriesName = series.getName();  // Can get residue by splitting semicolon
-        return seriesName;
+        return series.getName();
     }
 
     public void dumpLine(int iSeries) {
         ArrayList<ArrayList<Double>> lineData = returnLine(iSeries);
         lineData.forEach((pointData -> {
             String outputLine = String.format("%14.4g %14.4g %14.4g", pointData.get(0), pointData.get(1), pointData.get(2));
-            System.out.println(pointData);
+            System.out.println(outputLine);
         }));
     }
 
@@ -397,12 +338,12 @@ public class PlotData extends XYCanvasChart {
         ObservableList<DataSeries> data = getData();
         DataSeries series = data.get(iSeries);
         ArrayList<ArrayList<Double>> lineData = new ArrayList<>(series.getData().size());
-        series.getData().forEach((value) -> {
+        series.getData().forEach(value -> {
             Double x = value.getXValue();
             Double y = value.getYValue();
             Object extraValue = value.getExtraValue();
-            if (extraValue instanceof ExperimentData.DataValue) {
-                Double error = ((ExperimentData.DataValue) extraValue).getError();
+            if (extraValue instanceof ExperimentData.DataValue dataValue) {
+                Double error = dataValue.getError();
                 ArrayList<Double> pointData = new ArrayList<>(3);
                 pointData.add(x);
                 pointData.add(y);
@@ -413,39 +354,24 @@ public class PlotData extends XYCanvasChart {
         return lineData;
     }
 
-    public void dumpEquation(int iLine) {
-        ArrayList<ArrayList<Double>> equationData = returnEquation(iLine);
-        equationData.forEach((pointData -> {
-            String outputLine = String.format("%14.4g %14.4g %14.4g", pointData.get(0), pointData.get(1), pointData.get(2));
-            System.out.println(pointData);
-        }));
-    }
-
-    public ArrayList<ArrayList<Double>> returnEquation(int iLine) {
+    public List<List<Double>> returnEquation(int iLine) {
         PlotEquation plotEquation = plotEquations.get(iLine);
-        double fieldRef;
-        if (iLine == 0) {
-            fieldRef = plotEquation.getExtra(0);
-        } else { //Prevents another call if iLine = 0; probably an easier way to do this
-            PlotEquation refEquation = plotEquations.get(0);
-            fieldRef = refEquation.getExtra(0);
-        }
         double min = xAxis.getLowerBound();
         double max = xAxis.getUpperBound();
         int nIncr = 100;
         double delta = (max - min) / nIncr;
-        ArrayList<ArrayList<Double>> equationData = new ArrayList<>(nIncr - 1);
+        List<List<Double>> equationData = new ArrayList<>(nIncr - 1);
         double[] extras = plotEquation.getExtras();
         double[] ax = new double[1 + extras.length];
         for (int i = 1; i < nIncr - 1; i++) {
-            ArrayList<Double> pointData = new ArrayList<>(3);
+            List<Double> pointData = new ArrayList<>(3);
             double xValue = min + i * delta;
             ax[0] = xValue;
-            ax[1] = plotEquation.getExtra(0);
-            for (int j = 1; j < extras.length; j++) {
-                ax[j + 1] = extras[j];
+            if (extras.length > 0) {
+                ax[1] = extras[0];
             }
-            double yValue = plotEquation.calculate(ax);// / fieldRef);
+            if (extras.length - 1 >= 0) System.arraycopy(extras, 1, ax, 2, extras.length - 1);
+            double yValue = plotEquation.calculate(ax);
             pointData.add(xValue);
             pointData.add(yValue);
             equationData.add(pointData);
@@ -453,27 +379,29 @@ public class PlotData extends XYCanvasChart {
         return equationData;
     }
 
-//    @Override
-//    protected void seriesAdded(XYChart.Series series, int seriesIndex) {
-//        // handle any data already in series
-//        for (int j = 0; j < series.getData().size(); j++) {
-//            XYChart.Data item = (XYChart.Data) series.getData().get(j);
-////            Circle circle = new Circle(20.0);
-////            circle.setFill(Color.ORANGE);
-////            item.setNode(circle);
-//            item.getNode().setOnMouseEntered(new EventHandler<MouseEvent>() {
-//                @Override
-//                public void handle(MouseEvent mouseEvent) {
-//                    System.out.println("enter");
-//                }
-//            });
-//            item.getNode().setOnMouseExited(new EventHandler<MouseEvent>() {
-//                @Override
-//                public void handle(MouseEvent mouseEvent) {
-//                    System.out.println("exit");
-//                }
-//            });
-//
-//        }
-//    }
+    public void saveEquationData() throws IOException {
+        FileChooser fileChooser = new FileChooser();
+        File file = fileChooser.showSaveDialog(null);
+        if (file != null) {
+            try (FileWriter fileWriter = new FileWriter(file)) {
+                int numFits = getNumEquations();
+                List<List<List<Double>>> allData = new ArrayList<>();
+                for (int j = 0;j<numFits;j++) {
+                    List<List<Double>> data = returnEquation(0);
+                    allData.add(data);
+                }
+                for (int i = 0; i < allData.get(0).size(); i++) {
+                    double x = allData.get(0).get(i).get(0);
+                    StringBuilder outStr = new StringBuilder(String.format("%7f", x));
+                    for (int j = 0;j<numFits;j++) {
+                        double y = allData.get(j).get(i).get(1);
+                        outStr.append(String.format(" %7f", y));
+                    }
+                    fileWriter.write(outStr + "\n");
+
+                }
+            }
+        }
+
+    }
 }

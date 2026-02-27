@@ -18,7 +18,10 @@
 package org.comdnmr.eqnfit;
 
 import java.util.ArrayList;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
+
 import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.SynchronizedRandomGenerator;
@@ -43,7 +46,7 @@ public class ExpFitFunction extends FitFunction {
         equation = ExpEquation.valueOf(eqName.toUpperCase());
     }
 
-    public ExpFitFunction(CoMDOptions options,double[][] x, double[] y, double[] err) throws IllegalArgumentException {
+    public ExpFitFunction(CoMDOptions options, double[][] x, double[] y, double[] err) throws IllegalArgumentException {
         this(options, x, y, err, new int[x.length]);
     }
 
@@ -127,7 +130,7 @@ public class ExpFitFunction extends FitFunction {
     }
 
     @Override
-    public double[] simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nSim = options.getSampleSize();
         int nPar = start.length;
@@ -142,8 +145,12 @@ public class ExpFitFunction extends FitFunction {
             for (int k = 0; k < yValues.length; k++) {
                 yValues[k] = yPred[k] + errValues[k] * random.nextGaussian();
             }
-            PointValuePair result = refine(start, lowerBounds, upperBounds,
+            var resultOpt = refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
+            if (resultOpt.isEmpty()) {
+                return Optional.empty();
+            }
+            PointValuePair result = resultOpt.get();
             double[] rPoint = result.getPoint();
             for (int j = 0; j < nPar; j++) {
                 parValues[j][i] = rPoint[j];
@@ -158,12 +165,12 @@ public class ExpFitFunction extends FitFunction {
             parSDev[i] = dStat.getStandardDeviation();
         }
         yValues = yValuesOrig;
-        return parSDev;
+        return Optional.of(parSDev);
     }
 
     @Override
-    public double[] simBoundsStream(double[] start, double[] lowerBounds,
-            double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStream(double[] start, double[] lowerBounds,
+                                              double[] upperBounds, double inputSigma, CoMDOptions options) {
         if (options.getNonParametricBootstrap()) {
             return simBoundsStreamNonParametric(start, lowerBounds, upperBounds, inputSigma, options);
         } else {
@@ -171,8 +178,8 @@ public class ExpFitFunction extends FitFunction {
         }
     }
 
-    public double[] simBoundsStreamParametric(double[] start,
-            double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStreamParametric(double[] start,
+                                                        double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -181,6 +188,7 @@ public class ExpFitFunction extends FitFunction {
         rexErrors = new double[nID];
         double[] yPred = getPredicted(start);
         String optimizer = options.getBootStrapOptimizer();
+        AtomicBoolean failed = new AtomicBoolean(false);
 
         IntStream.range(0, nSim).parallel().forEach(i -> {
 //        IntStream.range(0, nSim).forEach(i -> {
@@ -194,25 +202,32 @@ public class ExpFitFunction extends FitFunction {
             rDisp.setIds(idNums);
             rDisp.setMap(map);
 
-            PointValuePair result = rDisp.refine(start, lowerBounds, upperBounds,
+            var resultOpt = rDisp.refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
+            if (resultOpt.isEmpty()) {
+                failed.set(true);
+            } else {
+                PointValuePair result = resultOpt.get();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
             }
-            parValues[nPar][i] = result.getValue();
-
         });
 
+        if (failed.get()) {
+            return Optional.empty();
+        }
         double[] parSDev = new double[nPar];
         for (int i = 0; i < nPar; i++) {
             DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
             parSDev[i] = dStat.getStandardDeviation();
         }
-        return parSDev;
+        return Optional.of(parSDev);
     }
 
-    public double[] simBoundsStreamNonParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStreamNonParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -220,6 +235,7 @@ public class ExpFitFunction extends FitFunction {
         double[][] rexValues = new double[nID][nSim];
         rexErrors = new double[nID];
         String optimizer = options.getBootStrapOptimizer();
+        AtomicBoolean failed = new AtomicBoolean(false);
 
         IntStream.range(0, nSim).parallel().forEach(i -> {
             ExpFitFunction rDisp = new ExpFitFunction(options, xValues, yValues, errValues, idNums);
@@ -245,21 +261,29 @@ public class ExpFitFunction extends FitFunction {
             rDisp.setIds(newID);
             rDisp.setMap(map);
 
-            PointValuePair result = rDisp.refine(start, lowerBounds, upperBounds,
+            var resultOpt = rDisp.refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
+            if (resultOpt.isEmpty()) {
+                failed.set(true);
+            } else {
+                PointValuePair result = resultOpt.get();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
             }
-            parValues[nPar][i] = result.getValue();
         });
+        if (failed.get()) {
+            return Optional.empty();
+        }
 
         double[] parSDev = new double[nPar];
         for (int i = 0; i < nPar; i++) {
             DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
             parSDev[i] = dStat.getStandardDeviation();
         }
-        return parSDev;
+        return Optional.of(parSDev);
     }
 
 }

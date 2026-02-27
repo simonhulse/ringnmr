@@ -131,30 +131,6 @@ public interface R1RhoEquationType extends EquationType {
     }
 
     @Override
-    public default int[][] makeMap(int n) {
-        int nP = 8;
-        int[][] map = new int[n][nP];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < nP; j++) {
-                map[i][j] = nP * i + j;
-            }
-        }
-        return map;
-    }
-
-    @Override
-    public default int[][] makeMap(int n, int m) {
-        int nP = m;
-        int[][] map = new int[n][nP];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < nP; j++) {
-                map[i][0] = nP * i + j;
-            }
-        }
-        return map;
-    }
-
-    @Override
     public default int[][] makeMap(int[] stateCount, int[][] states, int[] r2Mask) {
         int[][] map = makeMap(1);
         return map;

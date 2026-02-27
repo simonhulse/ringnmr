@@ -50,14 +50,16 @@ public class MFModelIso1 extends MFModelIso {
         return getAllParNames("Sf2");
     }
 
+    public double spectralDensity(double s2, double omega, double tau) {
+        return 0.4 * s2 / sN * tau / (1.0 + Math.pow(omega * tau, 2.0));
+    }
     @Override
     public double[] calc(double[] omegas) {
-        double tauMx = tauM * 1.0e-9;
         double[] J = new double[omegas.length];
         int j = 0;
         for (double omega : omegas) {
-            double omega2 = omega * omega;
-            J[j++] = 0.4 * sf2 / sN * tauMx / (1.0 + omega2 * tauMx * tauMx);
+            omega *= 1.0e-9;
+            J[j++] = 1.0e-9 * spectralDensity(sf2, omega, tauM);
         }
         return J;
     }

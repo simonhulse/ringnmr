@@ -86,26 +86,6 @@ public enum ExpEquation implements EquationType {
         }
 
         @Override
-        public int[][] makeMap(int n) {
-            int[][] map = new int[n][2];
-            for (int i = 0; i < n; i++) {
-                map[i][0] = 2 * i + 0;
-                map[i][1] = 2 * i + 1;
-            }
-            return map;
-        }
-
-        @Override
-        public int[][] makeMap(int n, int m) {
-            int[][] map = new int[n][3];
-            for (int i = 0; i < n; i++) {
-                map[i][0] = 2 * i + 0;
-                map[i][1] = 2 * i + 1;
-            }
-            return map;
-        }
-
-        @Override
         public int[][] makeMap(int[] stateCount, int[][] states, int[] r2Mask) {
             int n = states.length;
             int[][] map = new int[n][2];
@@ -177,28 +157,6 @@ public enum ExpEquation implements EquationType {
         @Override
         public double getKex(double[] pars, int id) {
             return pars[0];
-        }
-
-        @Override
-        public int[][] makeMap(int n) {
-            int[][] map = new int[n][3];
-            for (int i = 0; i < n; i++) {
-                map[i][0] = 2 * i + 0;
-                map[i][1] = 2 * i + 1;
-                map[i][2] = 2 * i + 2;
-            }
-            return map;
-        }
-
-        @Override
-        public int[][] makeMap(int n, int m) {
-            int[][] map = new int[n][4];
-            for (int i = 0; i < n; i++) {
-                map[i][0] = 2 * i + 0;
-                map[i][1] = 2 * i + 1;
-                map[i][2] = 2 * i + 2;
-            }
-            return map;
         }
 
         @Override

@@ -1,9 +1,7 @@
 package org.comdnmr.modelfree;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+
 import org.apache.commons.math3.geometry.euclidean.threed.NotARotationMatrixException;
 import org.apache.commons.math3.geometry.euclidean.threed.Rotation;
 import org.apache.commons.math3.geometry.euclidean.threed.RotationConvention;
@@ -87,6 +85,13 @@ public class RelaxFit {
 
     public void setFitJ(boolean value) {
         fitJ = value;
+    }
+    public void setLogJMode(boolean value) {
+        logJMode = value;
+    }
+
+    public boolean getLogJMode() {
+        return logJMode;
     }
 
     public double getLambdaS() {
@@ -362,33 +367,47 @@ public class RelaxFit {
         return new Array2DRowRealMatrix(rot.getMatrix()).transpose().getData();
     }
 
-    double[] calcDeltaSqJ(MolDataValues molData, double[] resPars, MFModel testModel) {
+    double[] calcDeltaSqJ(MolDataValues molData, double[] resPars, MFModel testModel, boolean report) {
         double sumSq = 0.0;
-
+        double sumSqNW = 0.0;
         double[][] jValues = molData.getJValues();
         double[] jCalc = testModel.calc(jValues[0], resPars);
+        int nValues = jCalc.length;
         double[] weights = jValues[jValues.length - 1];
         for (int i=0;i< jCalc.length;i++) {
-            double jErr;
+            final double delta;
+            final double delta2;
+            final double jErr;
             if (logJMode) {
-                double delta = Math.log10(jCalc[i]) - Math.log10(jValues[1][i]);
+                delta = Math.log10(jCalc[i]) - Math.log10(jValues[1][i]);
+                delta2 = delta * delta;
                 double high = jValues[1][i] + jValues[2][i];
                 double low = jValues[1][i] - jValues[2][i];
                 jErr = Math.abs(Math.log10(high) - Math.log10(low)) / 2.0;
-                sumSq += weights[i] * (delta * delta) / (jErr * jErr);
+                double jErr2 = jErr * jErr;
+                sumSq += weights[i] * delta2 / jErr2;
+                sumSqNW += delta2;
             } else {
-                double delta = jCalc[i] - jValues[1][i];
-                jErr = jValues[2][i];
-                sumSq += weights[i] * (delta * delta) / (jErr * jErr);
-
+                delta = jCalc[i] * 1.0e9 - jValues[1][i] * 1.0e9;
+                delta2 = delta * delta;
+                jErr = jValues[2][i] * 1.0e9;
+                double jErr2 = jErr * jErr;
+                sumSq += weights[i] * delta2 / jErr2;
+                sumSqNW += delta2;
             }
 
-          // System.out.printf("%3d %11.5g %11.5g %11.5g %11.5g %11.5g %11.5g\n", i, jValues[0][i], jCalc[i], jValues[1][i], jErr, weights[i], sumSq);
+         if (report) {
+             System.out.printf("%3d %11.5g %11.5g %11.5g %11.5g %11.5g %11.5g\n", i, jValues[0][i] * 1.0e-9, jCalc[i] * 1.0e9, jValues[1][i] * 1.0e9, jErr, weights[i], delta);
+         }
         }
+       if (report) {
+           System.out.printf("%11.5g %11.5g\n",Math.sqrt(sumSq/jCalc.length), Math.sqrt(sumSqNW/jCalc.length));
+       }
         double complexityS = testModel.getComplexityS();
         double complexityTau = testModel.getComplexityTau();
-        return new double[]{sumSq, complexityS, complexityTau, jCalc.length};
+        return new double[]{sumSq, complexityS, complexityTau, nValues};
     }
+
     double[] calcDeltaSqR(MolDataValues molData, double[] resPars, MFModel testModel) {
         double sumComplexityS = 0.0;
         double sumComplexityTau = 0.0;
@@ -412,15 +431,19 @@ public class RelaxFit {
         return new double[]{sumSq, sumComplexityS, sumComplexityTau, nPar};
     }
 
-    double[] calcDeltaSq(MolDataValues molData, double[] resPars, MFModel testModel) {
+    double[] calcDeltaSq(MolDataValues molData, double[] resPars, MFModel testModel, boolean report) {
         if (fitJ) {
-            return calcDeltaSqJ(molData, resPars, testModel);
+            return calcDeltaSqJ(molData, resPars, testModel, report);
         } else {
             return calcDeltaSqR(molData, resPars, testModel);
         }
     }
 
     public Score score(double[] pars, boolean keepPars) {
+        return score(pars, keepPars, false);
+    }
+
+    public Score score(double[] pars, boolean keepPars, boolean report) {
         double sumSq = 0.0;
         int n = 0;
         int nComplex = 0;
@@ -438,7 +461,7 @@ public class RelaxFit {
             } else {
                 resPars = pars;
             }
-            double[] resResult = calcDeltaSq(molData, resPars, testModel);
+            double[] resResult = calcDeltaSq(molData, resPars, testModel, report);
             sumSq += resResult[0];
             sumComplexityS += resResult[1];
             sumComplexityTau += resResult[2];
@@ -682,13 +705,13 @@ public class RelaxFit {
 
     }
 
-    public PointValuePair fitResidueToModel(double[] start, double[] lower, double[] upper) {
+    public Optional<PointValuePair> fitResidueToModel(double[] start, double[] lower, double[] upper) {
         Fitter fitter = Fitter.getArrayFitter(this::value);
         try {
-            return fitter.fit(start, lower, upper, 10.0);
+            return Optional.of(fitter.fit(start, lower, upper, 10.0));
         } catch (Exception ex) {
             ex.printStackTrace();
-            return null;
+            return Optional.empty();
         }
     }
 

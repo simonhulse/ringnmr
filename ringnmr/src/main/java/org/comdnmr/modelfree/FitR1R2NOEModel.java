@@ -192,7 +192,7 @@ public class FitR1R2NOEModel extends FitModel {
         for (var modelName : modelNames) {
             OrderParSet orderParSet = orderParSetMap.computeIfAbsent("order_parameter_list_" + modelName, k -> new OrderParSet(k));
         }
-        OrderParSet orderParSet = orderParSetMap.computeIfAbsent("order_parameter_list_1", k -> new OrderParSet(k));
+        OrderParSet orderParSet = orderParSetMap.computeIfAbsent("order_parameter_list_best", k -> new OrderParSet(k));
 
         molData.entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey)).parallel().forEach(e -> {
             updateProgress((double) counts.get() / n);
@@ -277,11 +277,12 @@ public class FitR1R2NOEModel extends FitModel {
                 repData = replicates(molDataRes, model, localTauFraction, localFitTau, pars, random);
                 OrderPar orderPar = makeOrderPar(orderParSet, resData, molDataRes, key, score, model, repData);
             }
-            if (score.aicc() < lowestAIC) {
-                lowestAIC = score.aicc();
+            if (useLambda || (modelNames.size() == 1) || (score.aicc().isPresent() && ((bestScore == null) || (score.aicc().get() < lowestAIC))))  {
+                lowestAIC = score.aicc().isPresent() ? score.aicc().get() : null;
                 bestModel = model;
                 bestScore = score;
             }
+
         }
         Optional<ModelFitResult> result = Optional.empty();
         double[][] replicateData;
@@ -292,7 +293,7 @@ public class FitR1R2NOEModel extends FitModel {
             if (nReplicates > 2) {
                 replicateData = replicates(molDataRes, bestModel, localTauFraction, localFitTau, pars, random);
             }
-            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
+            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_best");
             OrderPar orderPar = makeOrderPar(orderParSet, resData, molDataRes, key, bestScore, bestModel, replicateData);
             ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, null);
             result = Optional.of(modelFitResult);
@@ -395,7 +396,7 @@ public class FitR1R2NOEModel extends FitModel {
                 rssSum += bestScores[i].rss;
             }
             double rss = rssSum /= nReplicates;
-            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
+            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_best");
             OrderPar orderPar = new OrderPar(orderParSet, resSource, rss, bestScores[0].nValues, parNames.length, bestModel.getName());
             double[][] cov = new double[nJ][parNames.length];
             double[] bestPars = new double[parNames.length];
@@ -484,16 +485,20 @@ public class FitR1R2NOEModel extends FitModel {
         int nTries = 3;
         PointValuePair best = null;
         for (int i = 0; i < nTries; i++) {
-            PointValuePair fitResult = relaxFit.fitResidueToModel(start, lower, upper);
-            if ((i == 0) || (fitResult.getValue() < best.getValue())) {
-                best = fitResult;
+            Optional<PointValuePair> fitResultOpt = relaxFit.fitResidueToModel(start, lower, upper);
+            if (fitResultOpt.isPresent() && ((i == 0) || (fitResultOpt.get().getValue() < best.getValue()))) {
+                best = fitResultOpt.get();
             }
             for (int j = 0; j < start.length; j++) {
                 start[j] = keepStart[j] + random.nextGaussian() * 0.1 * (upper[j] - lower[j]);
             }
         }
-        var score = relaxFit.score(best.getPoint(), true);
-        return score;
+        if (best != null) {
+            var score = relaxFit.score(best.getPoint(), true);
+            return score;
+        } else {
+            return null;
+        }
     }
 
     public void setTauFraction(double value) {

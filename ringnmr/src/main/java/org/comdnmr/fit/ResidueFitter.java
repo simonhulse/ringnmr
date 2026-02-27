@@ -24,6 +24,7 @@ import org.comdnmr.eqnfit.ExpEquation;
 import org.comdnmr.eqnfit.EquationType;
 import org.comdnmr.eqnfit.FitResult;
 import org.comdnmr.eqnfit.R1RhoEquation;
+import org.comdnmr.eqnfit.SSR1RhoEquation;
 import org.comdnmr.eqnfit.CESTFitter;
 import org.comdnmr.eqnfit.CurveFit;
 import org.comdnmr.eqnfit.ExpFitter;
@@ -315,15 +316,17 @@ public class ResidueFitter {
             EquationFitter equationFitter = getFitter(options);
             equationFitter.setData(experimentSet, dynSources);
             CoMDOptions options = new CoMDOptions(true);
-            fitResult = equationFitter.doFit(equationName, null, options);
-            fitResults.put(equationName, fitResult);
-            if (fitResult.getAicc() < aicMin) {
-                aicMin = fitResult.getAicc();
-                if (fitResult.exchangeValid()) {
-                    bestEquation = equationName;
+            var fitResultOpt = equationFitter.doFit(equationName, null, options);
+            if (fitResultOpt.isPresent()) {
+                fitResult = fitResultOpt.get();
+                fitResults.put(equationName, fitResult);
+                if (fitResult.getAicc() < aicMin) {
+                    aicMin = fitResult.getAicc();
+                    if (fitResult.exchangeValid()) {
+                        bestEquation = equationName;
+                    }
                 }
             }
-//            System.out.println("fit " + fitResult.getAicc() + " " + aicMin + " " + bestEquation);
         }
         List<ExperimentResult> resInfoList = new ArrayList<>();
         Map<ResonanceSource, ExperimentResult> resMap = new HashMap<>();
@@ -341,13 +344,14 @@ public class ResidueFitter {
                 continue;
             }
             fitResult = fitResults.get(equationName);
-
-            int nCurves = fitResult.getNCurves();
-            for (int iCurve = 0; iCurve < nCurves; iCurve++) {
-                CurveFit curveFit = fitResult.getCurveFit(iCurve);
-                ResonanceSource dynSource = curveFit.getDynamicsSource();
-                ExperimentResult experimentResult = resMap.get(dynSource);
-                experimentResult.addCurveFit(curveFit, bestEquation.equals(equationName));
+            if (fitResult != null) {
+                int nCurves = fitResult.getNCurves();
+                for (int iCurve = 0; iCurve < nCurves; iCurve++) {
+                    CurveFit curveFit = fitResult.getCurveFit(iCurve);
+                    ResonanceSource dynSource = curveFit.getDynamicsSource();
+                    ExperimentResult experimentResult = resMap.get(dynSource);
+                    experimentResult.addCurveFit(curveFit, bestEquation.equals(equationName));
+                }
             }
         }
         return resInfoList;
@@ -421,6 +425,9 @@ public class ResidueFitter {
                 break;
             case "r1rho":
                 equationType = R1RhoEquation.valueOf(name);
+                break;
+            case "ssr1rho":
+                equationType = SSR1RhoEquation.valueOf(name);
                 break;
             case "noe":
                 equationType = NOEEquation.valueOf(name);

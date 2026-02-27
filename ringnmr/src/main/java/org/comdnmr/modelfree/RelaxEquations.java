@@ -44,11 +44,12 @@ public class RelaxEquations {
     public final static double GAMMA_H = 2.6752218744e8;
     public final static double GAMMA_D = 4.1065e7;
 
-    public final static double PLANCK = 1.0546e-34;
+    public final static double HBAR = 1.054571817e-34;
+    public final static double R_HH = 3.0e-10; // Simon chucked this in in order for some tests to work.
     public final static double R_HN = 1.02e-10;
     public final static double R_HC = 1.09e-10;
     public final static double R_CC = 1.51e-10;
-    public final static double SIGMA = -172.0e-6;
+    public final static double SIGMA = -172.0e-6;  // N.B. this is for Δσ = (3/2)σ = σzz - (1/2) (σxx + σyy)
     public final static double QCC = Math.PI*167.0e3/2.0;
     public final static double QCC2 = QCC * QCC;
 
@@ -59,14 +60,19 @@ public class RelaxEquations {
     static {
         GAMMA_MAP.put("H", GAMMA_H);
         GAMMA_MAP.put("N", GAMMA_N);
+        GAMMA_MAP.put("1H", GAMMA_H);
+        GAMMA_MAP.put("15N", GAMMA_N);
         GAMMA_MAP.put("C", GAMMA_C);
+        GAMMA_MAP.put("13C", GAMMA_C);
         GAMMA_MAP.put("D", GAMMA_D);
+        R_MAP.put("HH", R_HH);  // Simon chucked this in in order for some tests to work.
         R_MAP.put("HN", R_HN);
         R_MAP.put("NH", R_HN);
         R_MAP.put("HC", R_HC);
         R_MAP.put("CH", R_HC);
         R_MAP.put("DC", R_HC);
         R_MAP.put("CD", R_HC);
+        SIGMA_MAP.put("H", 0.0);  // Simon put this in to support R1RhoAA
         SIGMA_MAP.put("N", SIGMA);
         SIGMA_MAP.put("C", SIGMA);
     }
@@ -74,8 +80,9 @@ public class RelaxEquations {
     private final double r;
     private final double d;
     private final double d2;
-    private final double c;
-    private final double c2;
+    private final double c;  // (ωΔσ) / √3
+    private final double c2;   // (ω²Δσ²) / 3
+
     private final double gammaS;
     private final double gammaI;
     private final double sf;
@@ -86,9 +93,9 @@ public class RelaxEquations {
     //   consider using scaled versions (smaller exponents)
     /**
      *
-     * @param sf double. 1H NMR Spectrometer frequency.
+     * @param sf double. 1H NMR Spectrometer frequency (MHz).
      * @param elem1 String. First element ("H" for 1H NMR).
-     * @param elem2 String. Second element (C, N, etc.)
+     * @param elem2 String. Second element ("C", "N", etc.)
      */
     public RelaxEquations(double sf, String elem1, String elem2) {
         gammaI = GAMMA_MAP.get(elem1);
@@ -101,17 +108,15 @@ public class RelaxEquations {
             wS = wI * gammaS / gammaI;
         }
         r = R_MAP.get(elem1 + elem2);
-        d = MU0 * (gammaI * gammaS * PLANCK) / (4.0 * Math.PI * r * r * r);
+        d = -MU0 * (gammaI * gammaS * HBAR) / (4.0 * Math.PI * Math.pow(r, 3.0));
         d2 = d * d;
-        c = wS * SIGMA / Math.sqrt(3.0);
+        c = wS * SIGMA_MAP.get(elem2) / Math.sqrt(3.0);
         c2 = c * c;
         if (elem1.equals("D")) {
-            wValues = new double[]{0.0,wI, 2.0*wI};
+            wValues = new double[]{0.0, wI, 2.0 * wI};
         } else {
             wValues = new double[]{0.0, wS, wI - wS, wI, wI + wS};
-
         }
-
         this.sf = sf;
     }
 
@@ -186,7 +191,7 @@ public class RelaxEquations {
         return Math.abs(sf * GAMMA_MAP.get(elemX) / GAMMA_H);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculation using Model
      * 1.
@@ -201,7 +206,7 @@ public class RelaxEquations {
         return 0.4 * tauM * (value1);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     // tau = ts in Art Palmer's code (taue in the paper: Phys Chem Chem Phys, 2016, 18, 5839-5849), and taue in Relax.
     /**
      * Model Free spectral density function, J(omega), calculation using Model
@@ -258,7 +263,7 @@ public class RelaxEquations {
         return 0.4 * tauM * (value1 + value2 + value3);
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculations using Model
      * 1.
@@ -274,6 +279,16 @@ public class RelaxEquations {
         double JI = JModelFree(wI, tauM, s2); // R2
         double JS = JModelFree(wS, tauM, s2); //R1, R2
         return new double[]{J0, JS, JIminusS, JI, JIplusS};
+    }
+
+    public double[] getOmegas() {
+        double[] result = new double[5];
+        result[0] = 0.0;
+        result[S] = wS;
+        result[ImS] = wI-wS;
+        result[I] = wI;
+        result[IpS] = wI + wS;
+        return result;
     }
 
     // Note: tauM = tm in Art Palmer's code, and taui in Relax. tau = ts in Art Palmer's code (taue in the paper), and taue in Relax.
@@ -409,7 +424,7 @@ public class RelaxEquations {
         return 0.4 * sum;
     }
 
-    // Note: tauM = tm in Art Palmer's code, and taui in Relax. 
+    // Note: tauM = tm in Art Palmer's code, and taui in Relax.
     /**
      * Model Free spectral density function, J(omega), calculations using
      * ModelFree Model 1, 2, 5, or 6.
@@ -489,7 +504,7 @@ public class RelaxEquations {
 
     public double[] getDiffusionConstants(String type) {
         String[] types = {"sphere", "spheroid", "ellipsoid"};
-        double[][] constants = {{1}};//, 
+        double[][] constants = {{1}};//,
 //            {0.25*(3.0*dz2 - 1)*(3.0*dz2 - 1), 3*dz2*(1 - dz2), 0.75*(3.0*dz2 - 1)*(3.0*dz2 - 1)},
 //            {0.25*(dtot - e), 3*dy2*dz2, 3*dx2*dz2, 3*dx2*dy2, 0.25*(dtot + e)}};
         return constants[Arrays.asList(types).indexOf(type)];
@@ -497,7 +512,7 @@ public class RelaxEquations {
 
     public double[] getCorrelationTimes(String type, double Diso, double Da, double Dr) {
         String[] types = {"sphere", "spheroid", "ellipsoid"};
-        double[][] tauInv = {{6 * Diso}};//, 
+        double[][] tauInv = {{6 * Diso}};//,
 //            {6*Diso - 2*Da, 6*Diso - Da, 6*Diso + 2*Da},
 //            {6*Diso - 2*Da*R, 6*Diso - Da*(1 + 3*Dr), 6*Diso - Da*(1 - 3*Dr), 6*Diso + 2*Da, 6*Diso + 2*Da*R}};
         int index = Arrays.asList(types).indexOf(type);
@@ -690,7 +705,7 @@ public class RelaxEquations {
 
         double ddN = 160.0e-6;
         double theta = 17.0 * Math.PI / 180.0;
-        double p = MU0 * gammaI * gammaS * PLANCK / (8.0 * Math.PI * SQRT2 * r * r * r);
+        double p = MU0 * gammaI * gammaS * HBAR / (8.0 * Math.PI * SQRT2 * r * r * r);
         double dN = gammaS * B0 * ddN / (3.0 * SQRT2);
 
         double cosTheta = Math.cos(theta);
@@ -775,4 +790,132 @@ public class RelaxEquations {
         return (4.0 / 3.0) * (J[0] / J[S]);
     }
 
+    // SOLID STATE STUFF
+
+    /**
+    * Compute the CSA contribution to R1rho relaxation in the solid-state context.
+    * <p>
+    * Computes Eq. 39 in J. Phys. Chem. B 2017, 121, 25, 6117–6130.
+    *
+    * @param wr Rotating frame (MAS) frequency (rad s-1).
+    * @param we Spin-lock field frequency (rad s-1).
+    * @param tau Rotational correlation time (s).
+    * @param S2 Order parameter.
+    * @return R1rhoCSA: Contribution from CSA to R1rho.
+    */
+    public double r1RhoCSA(double wr, double we, double tau, double S2) {
+        // Using public double J(double w, double tau, double S2)
+        double oneMinusS2 = 1.0 - S2;
+        // Usually, R1rho experiments are performed with the locking field on resonance,
+        // such that theta_p is 90.
+        // In general, arccos(2 * pi * offset / we) should be used.
+        double theta_p = 0.5 * Math.PI;
+        // N.B. c2 is equivalent to (ω² Δσ²) / 3
+        return c2 * (
+            (1.0 / 9.0) * Math.pow(Math.sin(theta_p), 2.0) * (
+                J(we - 2 * wr, tau, oneMinusS2) +
+                2.0 * J(we - wr, tau, oneMinusS2) +
+                2.0 * J(we + wr, tau, oneMinusS2) +
+                J(we + 2 * wr, tau, oneMinusS2)
+            ) +
+            0.25 * (3.0 + Math.cos(2 * theta_p)) * J(wS, tau, oneMinusS2)
+        );
+    }
+
+    /**
+     * Compute the heteronuclear dipolar contribution to R1rho relaxation in the
+     * solid-state context.
+     * <p>
+     * Computes Eq. 33 in J. Phys. Chem. B 2017, 121, 25, 6117–6130.
+     *
+     * @param wr Rotating frame (MAS) frequency (rad s-1).
+     * @param we Spin-lock field frequency (rad s-1).
+     * @param tau Rotational correlation time (s).
+     * @param S2 Order parameter.
+     * @return R1rhoDD: Contribution from dipolar interaction to R1rho.
+     */
+    public double r1RhoIS(double wr, double we, double tau, double S2) {
+        // See applicable comments on omeMinusS2 and theta_p in R1rhoCSA
+        double oneMinusS2 = 1.0 - S2;
+        double theta_p = 0.5 * Math.PI;
+        return 0.25 * d2 * (
+            (1.0 / 3.0) * Math.pow(Math.sin(theta_p), 2.0) * (
+                J(we - 2 * wr, tau, oneMinusS2) +
+                2.0 * J(we - wr, tau, oneMinusS2) +
+                2.0 * J(we + wr, tau, oneMinusS2) +
+                J(we + 2 * wr, tau, oneMinusS2) +
+                9.0 * J(wS, tau, oneMinusS2)
+            ) +
+            0.25 * (3.0 + Math.cos(2 * theta_p)) * (
+                3.0 * J(wI, tau, oneMinusS2) +
+                6.0 * J(wI + wS, tau, oneMinusS2) +
+                J(wI - wS, tau, oneMinusS2)
+            )
+        );
+    }
+
+    public double r1RhoAA(double wr, double we, double tau, double S2) {
+        if (getGammaI() != getGammaS()) {
+            throw new RuntimeException("Expected the two nuclei to be the same.");
+        }
+        // See applicable comments on omeMinusS2 and theta_p in R1rhoCSA
+        double oneMinusS2 = 1.0 - S2;
+        double theta_p = 0.5 * Math.PI;
+        double sinSq2theta = Math.pow(Math.sin(2.0 * theta_p), 2.0);
+        double sinFourthTheta = Math.pow(Math.sin(theta_p), 4.0);
+        double threeCos2theta = 3.0 * Math.cos(2.0 * theta_p);
+        double r1Rho = 0.75 * d2 * (
+            0.125 * sinSq2theta * (
+                J(wr - we, tau, oneMinusS2) +
+                J(wr + we, tau, oneMinusS2)
+            ) +
+            0.5 * sinFourthTheta * (
+                J(wr - 2.0 * we, tau, oneMinusS2) +
+                J(wr + 2.0 * we, tau, oneMinusS2)
+            ) +
+            0.0625 * sinSq2theta * (
+                J(2.0 * wr - we, tau, oneMinusS2) +
+                J(2.0 * wr + we, tau, oneMinusS2)
+            ) +
+            0.25 * sinFourthTheta * (
+                J(2.0 * wr - 2.0 * we, tau, oneMinusS2) +
+                J(2.0 * wr + 2.0 * we, tau, oneMinusS2)
+            ) +
+            0.25 * (7.0 - threeCos2theta) * J(wI, tau, oneMinusS2) +
+            0.5 * (5.0 + threeCos2theta) * J(2.0 * wI, tau, oneMinusS2)
+        );
+        return r1Rho;
+    }
+
+    public double r1RhoAB(double wr, double we, double tau, double S2) {
+        if (getGammaI() != getGammaS()) {
+            throw new RuntimeException("Expected the two nuclei to be the same.");
+        }
+        // See applicable comments on omeMinusS2 and theta_p in R1rhoCSA
+        double oneMinusS2 = 1.0 - S2;
+        double theta_p = 0.5 * Math.PI;
+        double cos2theta = Math.cos(2.0 * theta_p);
+        double cosSq2theta = Math.pow(cos2theta, 2.0);
+        double sinSq2theta = Math.pow(Math.sin(2.0 * theta_p), 2.0);
+        double sinFourthTheta = Math.pow(Math.sin(theta_p), 4.0);
+        double r1Rho = 0.25 * d2 * (
+            (1.0 / 24.0) * (1.0 + 3.0 * cosSq2theta) * J(wr, tau, oneMinusS2) +
+            (1.0 / 48.0) * (1.0 + 3.0 * cosSq2theta) * J(2.0 * wr, tau, oneMinusS2) +
+            (3.0 / 4.0) * sinFourthTheta * (
+                J(2.0 * we + wr, tau, oneMinusS2) +
+                0.5 * J(2.0 * we + 2.0 * wr, tau, oneMinusS2) +
+                0.5 * J(2.0 * we - 2.0 * wr, tau, oneMinusS2) +
+                J(2.0 * we - wr, tau, oneMinusS2)
+            ) +
+            (3.0 / 8.0) * sinSq2theta * (
+                J(we + wr, tau, oneMinusS2) +
+                0.5 * J(we + 2.0 * wr, tau, oneMinusS2) +
+                0.5 * J(we - 2.0 * wr, tau, oneMinusS2) +
+                J(we - wr, tau, oneMinusS2)
+            ) +
+            (3.0 / 4.0) * (5.0 - cos2theta) * J(wI, tau, oneMinusS2) +
+            1.5 * (3.0 + cos2theta) * J(2.0 * wI, tau, oneMinusS2)
+        );
+        return r1Rho;
+    }
 }

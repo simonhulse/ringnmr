@@ -26,13 +26,9 @@ import org.comdnmr.util.CoMDOptions;
 import org.comdnmr.util.CoMDPreferences;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
- *
  * @author Bruce Johnson
  */
 public class ExpFitter implements EquationFitter {
@@ -97,7 +93,7 @@ public class ExpFitter implements EquationFitter {
     @Override
     public void setData(List<Double>[] allXValues, List<Double> yValues, List<Double> errValues) {
         xValues = new ArrayList[allXValues.length];
-        for (int j=0;j<allXValues.length;j++) {
+        for (int j = 0; j < allXValues.length; j++) {
             xValues[j] = new ArrayList<>();
             xValues[j].addAll(allXValues[j]);
         }
@@ -124,7 +120,7 @@ public class ExpFitter implements EquationFitter {
     @Override
     public void setData(ExperimentSet experimentSet, ResonanceSource[] dynSources) {
         xValues = new ArrayList[1];
-        for (int j=0;j<1;j++) {
+        for (int j = 0; j < 1; j++) {
             xValues[j] = new ArrayList<>();
         }
         this.dynSources = dynSources.clone();
@@ -147,7 +143,7 @@ public class ExpFitter implements EquationFitter {
                 double[] y = experimentalData.getYValues();
                 double[] err = experimentalData.getErrValues();
                 for (int i = 0; i < y.length; i++) {
-                    for (int j=0;j<xValues.length;j++) {
+                    for (int j = 0; j < xValues.length; j++) {
                         xValues[j].add(x[j][i]);
                     }
                     yValues.add(y[i]);
@@ -197,7 +193,7 @@ public class ExpFitter implements EquationFitter {
         double[] err = new double[yValues.size()];
         int[] idNums = new int[yValues.size()];
         for (int i = 0; i < x[0].length; i++) {
-            for (int j=0;j<x.length;j++) {
+            for (int j = 0; j < x.length; j++) {
                 x[j][i] = xValues[j].get(i);
             }
             y[i] = yValues.get(i);
@@ -233,7 +229,7 @@ public class ExpFitter implements EquationFitter {
     }
 
     @Override
-    public FitResult doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
+    public Optional<FitResult> doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
         setupFit(eqn);
 
         int[][] map = expModel.getMap();
@@ -247,8 +243,12 @@ public class ExpFitter implements EquationFitter {
 //        System.out.println("dofit guesses = " + guesses);
         double[][] boundaries = expModel.boundaries(guesses);
         double sigma = options.getStartRadius();
-        PointValuePair result = expModel.refine(guesses, boundaries[0], boundaries[1],
+        var resultOpt = expModel.refine(guesses, boundaries[0], boundaries[1],
                 sigma, options.getOptimizer());
+        if (resultOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        PointValuePair result = resultOpt.get();
         double[] pars = result.getPoint();
         /*
         for (int i = 0; i < map.length; i++) {
@@ -271,17 +271,19 @@ public class ExpFitter implements EquationFitter {
         sigma /= 2.0;
 
         String[] parNames = expModel.getParNames();
-        double[] errEstimates;
+        double[] errEstimates = new double[pars.length];
         double[][] simPars = null;
         if (FitFunction.getCalcError()) {
             long startTime = System.currentTimeMillis();
-            errEstimates = expModel.simBoundsStream(pars.clone(),
+            var errOpt = expModel.simBoundsStream(pars.clone(),
                     boundaries[0], boundaries[1], sigma, options);
             long endTime = System.currentTimeMillis();
+            if (errOpt.isPresent()) {
+                errEstimates = errOpt.get();
+            }
+
             errTime = endTime - startTime;
             simPars = expModel.getSimPars();
-        } else {
-            errEstimates = new double[pars.length];
         }
         String refineOpt = options.getOptimizer();
         String bootstrapOpt = options.getBootStrapOptimizer();
@@ -296,7 +298,7 @@ public class ExpFitter implements EquationFitter {
         boolean useWeight = options.getWeightFit();
         CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                 useNonParametric, sRadius, fRadius, tol, useWeight);
-        return getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates, fitQuality, simPars, true, curveStats);
+        return Optional.of(getResults(this, eqn, parNames, dynSources, map, states, null, nGroupPars, pars, errEstimates, fitQuality, simPars, true, curveStats));
     }
 
     @Override

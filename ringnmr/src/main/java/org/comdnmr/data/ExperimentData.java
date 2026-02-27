@@ -45,38 +45,34 @@ public class ExperimentData {
         this.errValues = err.clone();
     }
 
-    public ExperimentData(Experiment experiment, ResonanceSource dynSource,
-            List<Double> xValueList, List<Double> yValueList, List<Double> errValueList) {
+    public ExperimentData(Experiment experiment, ResonanceSource dynSource,List<DataIO.XYErrValue> xyErrValueList) {
         this.experiment = experiment;
         this.dynSource = dynSource;
-        int nValues = xValueList.size();
+        int nValues = xyErrValueList.size();
         this.xValues = new double[1][nValues];
         this.yValues = new double[nValues];
         this.errValues = new double[nValues];
         for (int i = 0; i < nValues; i++) {
-            xValues[0][i] = xValueList.get(i);
-            yValues[i] = yValueList.get(i);
-            errValues[i] = errValueList.get(i);
+            xValues[0][i] = xyErrValueList.get(i).x();
+            yValues[i] = xyErrValueList.get(i).y();
+            errValues[i] = xyErrValueList.get(i).err();
         }
     }
 
-    public ExperimentData(Experiment experiment, ResonanceSource dynSource,
-            List<Double>[] xValueList, List<Double> yValueList,
-            List<Double> errValueList) {
+    public ExperimentData(Experiment experiment, ResonanceSource dynSource, List<DataIO.XArrayYErrValue> xArrayYErrValues, int nX) {
         this.experiment = experiment;
         this.dynSource = dynSource;
-        int nValues = yValueList.size();
-        int nX = xValueList.length;
-//        System.out.println("make res data " + nX);
+        int nValues = xArrayYErrValues.size();
         this.xValues = new double[nX][nValues];
         this.yValues = new double[nValues];
         this.errValues = new double[nValues];
         for (int i = 0; i < nValues; i++) {
+            DataIO.XArrayYErrValue xArrayYErrValue = xArrayYErrValues.get(i);
             for (int j = 0; j < nX; j++) {
-                xValues[j][i] = xValueList[j].get(i);
+                xValues[j][i] = xArrayYErrValue.x()[j];
             }
-            yValues[i] = yValueList.get(i);
-            errValues[i] = errValueList.get(i);
+            yValues[i] = xArrayYErrValue.y();
+            errValues[i] = xArrayYErrValue.err();
         }
     }
 

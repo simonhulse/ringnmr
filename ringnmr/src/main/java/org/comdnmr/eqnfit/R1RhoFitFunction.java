@@ -17,7 +17,10 @@
  */
 package org.comdnmr.eqnfit;
 
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
+
 import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.SynchronizedRandomGenerator;
@@ -120,8 +123,9 @@ public class R1RhoFitFunction extends FitFunction {
         return parValues;
     }
 
+    // TODO: This has no usages. Any need for it?
     @Override
-    public double[] simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -136,13 +140,18 @@ public class R1RhoFitFunction extends FitFunction {
             for (int k = 0; k < yValues.length; k++) {
                 yValues[k] = yPred[k] + errValues[k] * random.nextGaussian();
             }
-            PointValuePair result = refine(start, lowerBounds, upperBounds,
+            var resultOpt = refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
+            if (resultOpt.isEmpty()) {
+                return Optional.empty();
+            } else {
+                PointValuePair result = resultOpt.get();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
             }
-            parValues[nPar][i] = result.getValue();
         }
         double[] parSDev = new double[nPar];
         for (int i = 0; i < nPar; i++) {
@@ -152,12 +161,12 @@ public class R1RhoFitFunction extends FitFunction {
             parSDev[i] = dStat.getStandardDeviation();
         }
         yValues = yValuesOrig;
-        return parSDev;
+        return Optional.of(parSDev);
     }
 
     @Override
-    public double[] simBoundsStream(double[] start, double[] lowerBounds,
-            double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStream(double[] start, double[] lowerBounds,
+                                              double[] upperBounds, double inputSigma, CoMDOptions options) {
         if (options.getNonParametricBootstrap()) {
             return simBoundsStreamNonParametric(start, lowerBounds, upperBounds, inputSigma, options);
         } else {
@@ -166,7 +175,7 @@ public class R1RhoFitFunction extends FitFunction {
 
     }
 
-    public double[] simBoundsStreamParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStreamParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -174,7 +183,7 @@ public class R1RhoFitFunction extends FitFunction {
         rexErrors = new double[nID];
         double[] yPred = getPredicted(start);
         String optimizer = options.getBootStrapOptimizer();
-
+        AtomicBoolean foundError = new AtomicBoolean(false);
         IntStream.range(0, nSim).parallel().forEach(i -> {
             R1RhoFitFunction rDisp = new R1RhoFitFunction(options, xValues, yPred, errValues, idNums);
             rDisp.setEquation(equation.getName());
@@ -185,25 +194,33 @@ public class R1RhoFitFunction extends FitFunction {
             rDisp.setXY(xValues, newY);
             rDisp.setIds(idNums);
             rDisp.setMap(map);
-
-            PointValuePair result = rDisp.refine(start, lowerBounds, upperBounds,
+            var resultOpt = rDisp.refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
-            }
-            parValues[nPar][i] = result.getValue();
-        });
+            if (resultOpt.isEmpty()) {
+                foundError.set(true);
+            } else {
+                PointValuePair result = resultOpt.get();
 
-        double[] parSDev = new double[nPar];
-        for (int i = 0; i < nPar; i++) {
-            DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
-            parSDev[i] = dStat.getStandardDeviation();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
+            }
+        });
+        if (foundError.get()) {
+            return Optional.empty();
+        } else {
+            double[] parSDev = new double[nPar];
+            for (int i = 0; i < nPar; i++) {
+                DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
+                parSDev[i] = dStat.getStandardDeviation();
+            }
+            return Optional.of(parSDev);
         }
-        return parSDev;
     }
 
-    public double[] simBoundsStreamNonParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStreamNonParametric(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -211,6 +228,7 @@ public class R1RhoFitFunction extends FitFunction {
         double[][] rexValues = new double[nID][nSim];
         rexErrors = new double[nID];
         String optimizer = options.getBootStrapOptimizer();
+        AtomicBoolean foundError = new AtomicBoolean(false);
 
         IntStream.range(0, nSim).parallel().forEach(i -> {
             R1RhoFitFunction rDisp = new R1RhoFitFunction(options, xValues, yValues, errValues, idNums);
@@ -223,7 +241,7 @@ public class R1RhoFitFunction extends FitFunction {
             do {
                 for (int k = 0; k < yValues.length; k++) {
                     int rI = random.nextInt(yValues.length);
-                    for (int j=0;j<xValues.length;j++) {
+                    for (int j = 0; j < xValues.length; j++) {
                         newX[j][k] = xValues[j][rI];
                     }
                     newY[k] = yValues[rI];
@@ -238,22 +256,31 @@ public class R1RhoFitFunction extends FitFunction {
             rDisp.setIds(newID);
             rDisp.setMap(map);
 
-            PointValuePair result = rDisp.refine(start, lowerBounds, upperBounds,
+            var resultOpt = rDisp.refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
+            if (resultOpt.isEmpty()) {
+                foundError.set(true);
+            } else {
+                PointValuePair result = resultOpt.get();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
             }
-            parValues[nPar][i] = result.getValue();
 
         });
 
-        double[] parSDev = new double[nPar];
-        for (int i = 0; i < nPar; i++) {
-            DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
-            parSDev[i] = dStat.getStandardDeviation();
+        if (foundError.get()) {
+            return Optional.empty();
+        } else {
+            double[] parSDev = new double[nPar];
+            for (int i = 0; i < nPar; i++) {
+                DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
+                parSDev[i] = dStat.getStandardDeviation();
+            }
+            return Optional.of(parSDev);
         }
-        return parSDev;
     }
 
 }

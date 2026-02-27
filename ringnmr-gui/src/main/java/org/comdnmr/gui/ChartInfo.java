@@ -6,6 +6,7 @@
 package org.comdnmr.gui;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.comdnmr.data.ExperimentResult;
 import org.comdnmr.data.ExperimentSet;
@@ -22,7 +23,7 @@ public class ChartInfo {
     List<String> mapName = new ArrayList<>();
     String state;
     String equationName;
-    ResonanceSource[] currentResidues;
+    ResidueChart.SelectionValue[] currentSelections;
     ExperimentResult experimentalResult;
     ValueSet valueSet;
     List<int[]> currentStates = new ArrayList<>();
@@ -32,8 +33,8 @@ public class ChartInfo {
         StringBuilder sBuilder = new StringBuilder();
         sBuilder.append(mapName).append(" ").append(equationName).append(" ").append(state).append(" ").
                 append(valueSet.name());
-        for (var resonanceSource : currentResidues) {
-            sBuilder.append(" ").append(resonanceSource.getAtom().getShortName());
+        for (var selectionValue : currentSelections) {
+            sBuilder.append(" ").append(selectionValue.resonanceSource().getAtom().getShortName());
         }
         return sBuilder.toString();
     }
@@ -55,7 +56,7 @@ public class ChartInfo {
     }
 
     public boolean hasResidues() {
-        return currentResidues != null;
+        return currentSelections != null;
     }
 
     public Atom getAtom() {
@@ -70,12 +71,16 @@ public class ChartInfo {
         return experimentalResult.getResonanceSource();
     }
 
-    public ResonanceSource[] getResidues() {
-        return currentResidues;
+    public ResidueChart.SelectionValue[] getCurrentSelections() {
+        return currentSelections;
     }
 
-    public void setResidues(ResonanceSource[] residues) {
-        this.currentResidues = residues;
+    public List<ResonanceSource> getCurrentResonanceSources() {
+        return  Arrays.stream(currentSelections).map(sV -> sV.resonanceSource()).distinct().toList();
+    }
+
+    public void setResidues(ResidueChart.SelectionValue[] residues) {
+        this.currentSelections = residues;
     }
 
     public ExperimentResult getResult() {
@@ -92,7 +97,7 @@ public class ChartInfo {
     }
 
     public void clear() {
-        currentResidues = null;
+        currentSelections = null;
         experimentalResult = null;
         valueSet = null;
         currentStates = new ArrayList<>();

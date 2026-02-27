@@ -22,18 +22,15 @@ import org.comdnmr.util.CoMDPreferences;
 import org.comdnmr.data.ExperimentSet;
 import org.comdnmr.data.ExperimentData;
 import org.comdnmr.data.Experiment;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
+
 import org.apache.commons.math3.optim.PointValuePair;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 import org.comdnmr.util.CoMDOptions;
 import org.nmrfx.chemistry.Atom;
 
 /**
- *
  * @author Bruce Johnson
  */
 public class R1RhoFitter implements EquationFitter {
@@ -97,7 +94,7 @@ public class R1RhoFitter implements EquationFitter {
     @Override
     public void setData(ExperimentSet experimentSet, ResonanceSource[] dynSources) {
         xValues = new ArrayList[4];
-        for (int j = 0;j<xValues.length;j++) {
+        for (int j = 0; j < xValues.length; j++) {
             xValues[j] = new ArrayList<>();
         }
         this.dynSources = dynSources.clone();
@@ -122,7 +119,7 @@ public class R1RhoFitter implements EquationFitter {
                     double[] err = experimentalData.getErrValues();
                     double field = expData.getNucleusField();
                     for (int i = 0; i < y.length; i++) {
-                        for (int j=0;j<x.length;j++) {
+                        for (int j = 0; j < x.length; j++) {
                             xValues[j].add(x[j][i]);
                         }
                         xValues[xValues.length - 1].add(field);
@@ -140,7 +137,7 @@ public class R1RhoFitter implements EquationFitter {
     @Override
     public void setData(List<Double>[] allXValues, List<Double> yValues, List<Double> errValues) {
         xValues = new ArrayList[allXValues.length];
-        for (int j=0;j<allXValues.length;j++) {
+        for (int j = 0; j < allXValues.length; j++) {
             xValues[j] = new ArrayList<>();
             xValues[j].addAll(allXValues[j]);
         }
@@ -182,9 +179,7 @@ public class R1RhoFitter implements EquationFitter {
 
     public static List<String> getEquationNames() {
         List<String> activeEquations = CoMDPreferences.getActiveR1RhoEquations();
-        System.out.println(activeEquations.toString());
         return activeEquations;
-
     }
 
     public static List<String> setEquationNames(List<String> eqnNames) {
@@ -209,7 +204,7 @@ public class R1RhoFitter implements EquationFitter {
         double[] err = new double[yValues.size()];
         int[] idNums = new int[yValues.size()];
         for (int i = 0; i < x[0].length; i++) {
-            for (int j=0;j<xValues.length;j++) {
+            for (int j = 0; j < xValues.length; j++) {
                 x[j][i] = xValues[j].get(i);
             }
             y[i] = yValues.get(i);
@@ -248,7 +243,7 @@ public class R1RhoFitter implements EquationFitter {
     }
 
     @Override
-    public FitResult doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
+    public Optional<FitResult> doFit(String eqn, double[] sliderguesses, CoMDOptions options) {
         double[][] xvals = new double[xValues.length][xValues[0].size()];
         double[] yvals = new double[yValues.size()];
         int[] idNums = new int[yValues.size()];
@@ -292,8 +287,15 @@ public class R1RhoFitter implements EquationFitter {
                 for (int i = 0; i < guesses.length; i++) {
                     System.out.println(i + " bou0 " + boundaries[0][i] + " bou1 " + boundaries[1][i] + " gue " + guesses[i]);
                 }
-                PointValuePair result = calcR1Rho.refine(guesses, boundaries[0],
+                var resultOpt = calcR1Rho.refine(guesses, boundaries[0],
                         boundaries[1], sigma, options.getOptimizer());
+                PointValuePair result;
+
+                if (resultOpt.isEmpty()) {
+                    return Optional.empty();
+                } else {
+                    result = resultOpt.get();
+                }
                 double[] pars = result.getPoint();
                 System.out.println(eqn);
 
@@ -316,16 +318,19 @@ public class R1RhoFitter implements EquationFitter {
                 sigma /= 2.0;
 
                 String[] parNames = calcR1Rho.getParNames();
-                double[] errEstimates;
+                double[] errEstimates = new double[pars.length];
                 double[][] simPars = null;
                 boolean exchangeValid = true;
                 double deltaABdiff = options.getDeltaABDiff();
                 if (FitFunction.getCalcError()) {
                     long startTime = System.currentTimeMillis();
-                    errEstimates = calcR1Rho.simBoundsStream(pars.clone(),
+                    var errOpt = calcR1Rho.simBoundsStream(pars.clone(),
                             boundaries[0], boundaries[1], sigma, options);
                     long endTime = System.currentTimeMillis();
                     errTime = endTime - startTime;
+                    if (errOpt.isPresent()) {
+                        errEstimates = errOpt.get();
+                    }
 
                     simPars = calcR1Rho.getSimPars();
                     for (String parName : parNames) {
@@ -337,8 +342,6 @@ public class R1RhoFitter implements EquationFitter {
                             }
                         }
                     }
-                } else {
-                    errEstimates = new double[pars.length];
                 }
                 double[][] extras = getFields(xValues, idValues);
                 String refineOpt = options.getOptimizer();
@@ -354,12 +357,12 @@ public class R1RhoFitter implements EquationFitter {
                 boolean useWeight = options.getWeightFit();
                 CurveFit.CurveFitStats curveStats = new CurveFit.CurveFitStats(refineOpt, bootstrapOpt, fitTime, bootTime, nSamples, useAbs,
                         useNonParametric, sRadius, fRadius, tol, useWeight);
-                return getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, fitQuality, simPars, exchangeValid, curveStats);
+                return Optional.of(getResults(this, eqn, parNames, dynSources, map, states, extras, nGroupPars, pars, errEstimates, fitQuality, simPars, exchangeValid, curveStats));
             } else {
-                return null;
+                return Optional.empty();
             }
         } else {
-            return null;
+            return Optional.empty();
         }
     }
 

@@ -174,29 +174,6 @@ public interface CESTEquationType extends EquationType {
     }
 
     @Override
-    default int[][] makeMap(int n) {
-        int nP = 8;
-        int[][] map = new int[n][nP];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < nP; j++) {
-                map[i][j] = nP * i + j;
-            }
-        }
-        return map;
-    }
-
-    @Override
-    default int[][] makeMap(int n, int m) {
-        int[][] map = new int[n][m];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
-                map[i][0] = m * i + j;
-            }
-        }
-        return map;
-    }
-
-    @Override
     default int[][] makeMap(int[] stateCount, int[][] states, int[] r2Mask) {
         return makeMap(1);
     }

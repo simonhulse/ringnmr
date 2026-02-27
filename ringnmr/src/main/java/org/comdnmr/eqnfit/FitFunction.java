@@ -18,10 +18,7 @@
 package org.comdnmr.eqnfit;
 
 import org.apache.commons.math3.analysis.MultivariateFunction;
-import org.apache.commons.math3.exception.DimensionMismatchException;
-import org.apache.commons.math3.exception.NotPositiveException;
-import org.apache.commons.math3.exception.NotStrictlyPositiveException;
-import org.apache.commons.math3.exception.TooManyEvaluationsException;
+import org.apache.commons.math3.exception.*;
 import org.apache.commons.math3.optim.*;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
@@ -34,6 +31,7 @@ import org.comdnmr.fit.FitQuality;
 import org.comdnmr.util.CoMDOptions;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
@@ -97,7 +95,7 @@ public abstract class FitFunction implements MultivariateFunction {
 
     public abstract void setEquation(String eqName);
 
-    public PointValuePair refine(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma, String type) {
+    public Optional<PointValuePair> refine(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma, String type) {
         if (type.equals("BOBYQA")) {
             return refineBOBYQA(guess, lowerBounds, upperBounds, inputSigma);
         } else {
@@ -106,15 +104,15 @@ public abstract class FitFunction implements MultivariateFunction {
         }
     }
 
-    public PointValuePair refineCMAES(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma) {
+    public Optional<PointValuePair> refineCMAES(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma) {
         this.lowerBounds = lowerBounds.clone();
         this.upperBounds = upperBounds.clone();
         startTime = System.currentTimeMillis();
         DEFAULT_RANDOMGENERATOR.setSeed(1);
-        double lambdaMul = 3.0;
+        double lambdaMul = 5.0;
         int lambda = (int) (lambdaMul * FastMath.round(4 + 3 * FastMath.log(guess.length)));
         //int nSteps = guess.length*1000;
-        int nSteps = 2000;
+        int nSteps = 4000;
         double stopFitness = 0.0;
         int diagOnly = 0;
         double tol = options.getTolerance();
@@ -142,18 +140,21 @@ public abstract class FitFunction implements MultivariateFunction {
                     new ObjectiveFunction(this), GoalType.MINIMIZE,
                     new SimpleBounds(normLower, normUpper),
                     new InitialGuess(normGuess));
-        } catch (DimensionMismatchException | NotPositiveException | NotStrictlyPositiveException |
-                 TooManyEvaluationsException e) {
+        } catch (DimensionMismatchException | NotPositiveException | NotStrictlyPositiveException
+                  | MaxCountExceededException e) {
             e.printStackTrace();
+        }
+        if (result == null) {
+            return Optional.empty();
         }
         endTime = System.currentTimeMillis();
         fitTime = endTime - startTime;
         PointValuePair deNormResult = new PointValuePair(deNormalize(result.getPoint()), result.getValue());
 
-        return deNormResult;
+        return Optional.of(deNormResult);
     }
 
-    public PointValuePair refineBOBYQA(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma) {
+    public Optional<PointValuePair> refineBOBYQA(double[] guess, double[] lowerBounds, double[] upperBounds, double inputSigma) {
         this.lowerBounds = lowerBounds.clone();
         this.upperBounds = upperBounds.clone();
         startTime = System.currentTimeMillis();
@@ -190,11 +191,14 @@ public abstract class FitFunction implements MultivariateFunction {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        if (result == null) {
+            return Optional.empty();
+        }
         endTime = System.currentTimeMillis();
         fitTime = endTime - startTime;
         PointValuePair deNormResult = new PointValuePair(deNormalize(result.getPoint()), result.getValue());
 
-        return deNormResult;
+        return Optional.of(deNormResult);
     }
 
     void fixGuesses(double[] guesses) {
@@ -238,10 +242,10 @@ public abstract class FitFunction implements MultivariateFunction {
 
     public abstract int[] getMask();
 
-    public abstract double[] simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
+    public abstract Optional<double[]> simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
 
-    public abstract double[] simBoundsStream(double[] start,
-                                             double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
+    public abstract Optional<double[]> simBoundsStream(double[] start,
+                                                       double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options);
 
     public abstract double[][] getSimPars();
 

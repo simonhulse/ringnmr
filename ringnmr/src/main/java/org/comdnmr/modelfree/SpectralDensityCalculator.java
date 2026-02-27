@@ -1,10 +1,74 @@
 package org.comdnmr.modelfree;
 
+import org.apache.commons.math3.optim.PointValuePair;
+import org.comdnmr.data.Fitter;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class SpectralDensityCalculator {
+    static boolean useR1 = true;
+    static boolean useR2 = true;
+    static boolean useNOE = true;
+    static boolean useRQ = true;
+    static boolean useRAP = true;
+
+    R1R2NOEDataValue relaxDataValue;
+
+    public static void setUseRQ(boolean state) {
+        useRQ = state;
+    }
+
+    public double value(double[] pars, double[][] values) {
+        RelaxEquations relaxEquation = relaxDataValue.relaxObj;
+        double ratio = RelaxEquations.GAMMA_N / RelaxEquations.GAMMA_H;
+        double f1 = 1.0 - ratio;
+        double f2 = 1.0 + ratio;
+
+
+        double jH = pars[2];
+        double jHmN = jH / Math.pow(f1, 1.5);
+        double jHpN = jH / Math.pow(f2, 1.5);
+
+        double[] jValues = {pars[0], pars[1], jHmN, jH, jHpN};
+        double r1 = relaxEquation.R1(jValues);
+        double r2 = relaxEquation.R2(jValues, 0.0);
+        double noe = relaxEquation.NOE(jValues);
+
+        return relaxDataValue.score2(r1, r2, noe);
+    }
+
+    public PointValuePair fit(R1R2NOEDataValue dValue) {
+        this.relaxDataValue = dValue;
+        Fitter fitter = Fitter.getArrayFitter(this::value);
+        double[][] jValues = calcJR1R2NOE(List.of(dValue));
+        double j0 = jValues[1][0];
+        double jN = jValues[1][2];
+        double jH = jValues[1][1];
+        double ratio = RelaxEquations.GAMMA_N / RelaxEquations.GAMMA_H;
+        double f1 = 1.0 - ratio;
+        double f2 = 1.0 + ratio;
+
+        double[] start = {j0, jN, jH};
+        double[] lower = {j0 * 0.5, jN * 0.5, jH * 0.5};
+        double[] upper = {j0 * 1.5, jN * 1.5, jH * 1.5};
+
+        try {
+            PointValuePair pointValuePair = fitter.fit(start, lower, upper, 10.0);
+            double[] j = pointValuePair.getPoint();
+
+            double jHr = j[2];
+            double jHmN = jHr / Math.pow(f1, 1.5);
+            double jHpN = jHr / Math.pow(f2, 1.5);
+
+            double[] jResult = {j[0], j[1], jHmN, jHr, jHpN};
+            return new PointValuePair(jResult, pointValuePair.getValue());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
 
     public static double[][] calcJR1R2NOE(List<RelaxDataValue> dataValues) {
         boolean useAverage = false;
@@ -66,6 +130,26 @@ public class SpectralDensityCalculator {
         return result;
     }
 
+    public static int getNData(List<RelaxDataValue> dataValues) {
+        int n = 0;
+        if (!dataValues.isEmpty()) {
+            boolean[] typeUsage;
+            if (dataValues.get(0) instanceof DeuteriumDataValue) {
+                typeUsage = new boolean[]{useR1, useR2, useRQ, useRAP};
+            } else {
+                typeUsage = new boolean[]{useR1, useR2, useNOE};
+            }
+            int nActive = 0;
+            for (boolean type : typeUsage) {
+                if (type) {
+                    nActive++;
+                }
+            }
+            n = dataValues.size() * nActive;
+        }
+        return n;
+    }
+
     public static double[][] calcJDeuterium(List<RelaxDataValue> dataValues) {
         double[][] result = null;
         if (!dataValues.isEmpty()) {
@@ -73,23 +157,33 @@ public class SpectralDensityCalculator {
             List<Double> errValues = new ArrayList<>();
             List<Double> fields = new ArrayList<>();
             boolean doIndependent = false;
+            boolean[] typeUsage = {useR1, useR2, useRQ, useRAP};
 
             for (var value : dataValues) {
                 var dValue = (DeuteriumDataValue) value;
-                rValues.add(dValue.R1);
-                rValues.add(dValue.R2);
-                rValues.add(dValue.rQ);
-                rValues.add(dValue.rAP);
-                errValues.add(dValue.R1err);
-                errValues.add(dValue.R2err);
-                errValues.add(dValue.rQError);
-                errValues.add(dValue.rAPError);
+                if (typeUsage[0]) {
+                    rValues.add(dValue.R1);
+                    errValues.add(dValue.R1err);
+                }
+                if (typeUsage[1]) {
+                    rValues.add(dValue.R2);
+                    errValues.add(dValue.R2err);
+                }
+
+                if (typeUsage[2]) {
+                    rValues.add(dValue.rQ);
+                    errValues.add(dValue.rQError);
+                }
+                if (typeUsage[3]) {
+                    rValues.add(dValue.rAP);
+                    errValues.add(dValue.rAPError);
+                }
                 fields.add(dValue.relaxObj.getSF() * RelaxEquations.GAMMA_D / RelaxEquations.GAMMA_H * 2.0 * Math.PI);
             }
             if (doIndependent && dataValues.size() == 1) {
                 result = DeuteriumMapping.independentMapping(rValues, errValues, fields);
             } else {
-                result = DeuteriumMapping.jointMapping(rValues, errValues, fields);
+                result = DeuteriumMapping.jointMapping(rValues, errValues, fields, typeUsage);
             }
         }
         return result;

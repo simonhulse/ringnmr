@@ -630,7 +630,7 @@ public class R1RhoControls extends EquationControls {
     }
 
     public List<String> getParNames() {
-        String equationName = equationSelector.getValue().toString();
+        String equationName = equationSelector.getValue();
         List<String> parNames1 = new ArrayList<>();
         switch (equationName) {
             case "TROTT_PALMER":

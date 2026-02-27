@@ -4,11 +4,11 @@
     <parent>
         <groupId>org.comdnmr</groupId>
         <artifactId>ringnmr-parent</artifactId>
-        <version>1.23</version>
+        <version>1.33</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>ringnmr</artifactId>
-    <version>1.23</version>
+    <version>1.33</version>
     <name>ringnmr</name>
     <packaging>jar</packaging>
     <properties>
@@ -30,7 +30,7 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-core</artifactId>
-            <version>11.4.14</version>
+            <version>11.4.33</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -76,16 +76,6 @@
             <version>0.40</version>
         </dependency>
         <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-base</artifactId>
-            <version>17</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-graphics</artifactId>
-            <version>17</version>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
@@ -94,7 +84,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.25</version>
+            <version>1.33</version>
         </dependency>
         <dependency>
             <groupId>org.ojalgo</groupId>

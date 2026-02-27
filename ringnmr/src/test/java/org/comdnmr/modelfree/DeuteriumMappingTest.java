@@ -41,12 +41,14 @@ public class DeuteriumMappingTest {
             rValues.add(rValuesWithErrs.get(i));
             rValueErrs.add(rValuesWithErrs.get(i + 1));
         }
+        boolean[] typeUsage = {true, true, true, true};
+
         for (int j = 0; j < fields.size(); j++) {
             var rvaluesField = rValues.subList(j * 4, j * 4 + 4);
             var rvalueErrsField = rValueErrs.subList(j * 4, j * 4 + 4);
             RelaxEquations rlxEq = RelaxEquations.getRelaxEquations(fields.get(j), "D", "C");
             var field400 = List.of(rlxEq.getW()[1]);
-            var jValues = DeuteriumMapping.jointMapping(rvaluesField, rvalueErrsField, field400);
+            var jValues = DeuteriumMapping.jointMapping(rvaluesField, rvalueErrsField, field400, typeUsage);
             double r1 = rlxEq.R1_D(jValues[1]);
             double r2 = rlxEq.R2_D(jValues[1]);
             double rQ = rlxEq.RQ_D(jValues[1]);
@@ -69,7 +71,9 @@ public class DeuteriumMappingTest {
             rValues.add(rValuesWithErrs.get(i));
             rValueErrs.add(rValuesWithErrs.get(i + 1));
         }
-        var jValues = DeuteriumMapping.jointMapping(rValues, rValueErrs, fields);
+        boolean[] typeUsage = {true, true, true, true};
+
+        var jValues = DeuteriumMapping.jointMapping(rValues, rValueErrs, fields, typeUsage);
         double[] jField = new double[3];
         for (int j = 0; j < fields.size(); j++) {
             RelaxEquations rlxEq = RelaxEquations.getRelaxEquations(fields.get(j), "D", "C");
@@ -104,7 +108,9 @@ public class DeuteriumMappingTest {
         List<Double> rValuesErrs = List.of(r1 * 0.04, r2 * 0.03, rQ * 0.05, rAP * 0.02);
 
         var fields = List.of(rlxEq.getW()[1]);
-        var jValuesCalc = DeuteriumMapping.jointMapping(rValues, rValuesErrs, fields);
+        boolean[] typeUsage = {true, true, true, true};
+
+        var jValuesCalc = DeuteriumMapping.jointMapping(rValues, rValuesErrs, fields, typeUsage);
         Assert.assertArrayEquals(jValues, jValuesCalc[1], 1.0e-12);
     }
 
@@ -123,7 +129,9 @@ public class DeuteriumMappingTest {
         List<Double> rValuesErrs = List.of(r1 * 0.04, r2 * 0.03, rQ * 0.05, rAP * 0.02);
 
         var fields = List.of(rlxEq.getW()[1]);
-        var jValuesCalc = DeuteriumMapping.jointMapping(rValues, rValuesErrs, fields);
+        boolean[] typeUsage = {true, true, true, true};
+
+        var jValuesCalc = DeuteriumMapping.jointMapping(rValues, rValuesErrs, fields, typeUsage);
         Assert.assertArrayEquals(jValues, jValuesCalc[1], 1.0e-11);
     }
 
@@ -137,7 +145,7 @@ public class DeuteriumMappingTest {
         MolDataValues resData = new MolDataValues("3.CB", v, dynamicsSourceFactory);
         Map<String, OrderParSet> orderParSetMap = new HashMap<>();
 
-        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_1", k -> new OrderParSet(k));
+        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_best", k -> new OrderParSet(k));
         OrderParSet orderParSet = orderParSetMap.computeIfAbsent("order_parameter_list_D1f", k -> new OrderParSet(k));
 
         for (int i = 0; i < rValuesWithErrs.size(); i += 8) {
@@ -182,7 +190,7 @@ public class DeuteriumMappingTest {
         MolDataValues resData = new MolDataValues("13.CB", v, dynamicsSourceFactory);
         Map<String, OrderParSet> orderParSetMap = new HashMap<>();
 
-        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_1", k -> new OrderParSet(k));
+        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_best", k -> new OrderParSet(k));
         OrderParSet orderParSet = orderParSetMap.computeIfAbsent("order_parameter_list_D1f", k -> new OrderParSet(k));
 
         for (int i = 0; i < rValuesWithErrs2.size(); i += 9) {
@@ -225,7 +233,7 @@ public class DeuteriumMappingTest {
         MolDataValues resData = new MolDataValues("3.CB", v, dynamicsSourceFactory);
         Map<String, OrderParSet> orderParSetMap = new HashMap<>();
 
-        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_1", k -> new OrderParSet(k));
+        OrderParSet orderParSet1 = orderParSetMap.computeIfAbsent("order_parameter_list_best", k -> new OrderParSet(k));
         OrderParSet orderParSet1sf = orderParSetMap.computeIfAbsent("order_parameter_list_D1sf", k -> new OrderParSet(k));
         OrderParSet orderParSet1f = orderParSetMap.computeIfAbsent("order_parameter_list_D1f", k -> new OrderParSet(k));
         int nJ = jData.length / 2;

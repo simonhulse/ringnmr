@@ -69,9 +69,21 @@ public interface EquationType {
 
     double getKex(double[] pars, int id);
 
-    int[][] makeMap(int n);
-
-    int[][] makeMap(int n, int m);
+    default  int[][] makeMap(int nStates) {
+        int nPars = getParNames().length;
+        int nGroupPars = getNGroupPars();
+        int nNonGroupPars = nPars - nGroupPars;
+        int[][] map = new int[nStates][nPars];
+        for (int i = 0; i < nStates; i++) {
+            for (int j=0;j<nGroupPars;j++) {
+                map[i][j] = j;
+            }
+            for (int j=0;j<nNonGroupPars;j++) {
+                map[i][nGroupPars + j] = nNonGroupPars * i + nGroupPars + j;
+            }
+        }
+        return map;
+    }
 
     int[][] makeMap(int[] stateCount, int[][] states, int[] mask);
 

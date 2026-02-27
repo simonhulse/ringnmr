@@ -12,7 +12,7 @@
 <?import org.controlsfx.control.StatusBar?>
 <BorderPane styleClass="mainFxmlClass"
             xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
-            prefWidth="850" prefHeight="700"
+            prefWidth="1024" prefHeight="900"
             fx:controller="org.comdnmr.gui.PyController">
     <fx:script source="actions.py"/>
     <top>
@@ -37,6 +37,7 @@
                         <MenuItem text="Save Analysis..." onAction="#saveParameters"/>
                         <MenuItem text="Save R1/R2/NOE..." onAction="#saveR1R2NOE" fx:id="saveR1R2NOE"/>
                         <MenuItem text="Save Model Free..." onAction="#saveOrderParameters"/>
+                        <MenuItem text="Save R1/R2/Tau..." onAction="#writeR1R2Tau"/>
                         <MenuItem text="Save Spectral Densities..." onAction="#saveSpectralDensities"
                                   fx:id="saveSpectralDensities"/>
                     </Menu>
@@ -55,32 +56,20 @@
                         <MenuItem text="XY to Grace..." onAction="#saveGraceFile"/>
                         <MenuItem text="XY To Python..." onAction="#savePythonFile"/>
                         <MenuItem text="XY To R..." onAction="#saveRFile"/>
-                        <MenuItem text="Residue To Python..." onAction="#saveBarToPythonFile"/>
-                        <MenuItem text="Residue To R..." onAction="#saveBarToRFile"/>
                     </Menu>
-                    <MenuItem text="Connect to NMRFx Server..." onAction="#startServer"/>
+                    <Menu text="Save XY Chart Data...">
+                        <MenuItem text="Equation..." onAction="#saveEquationFile"/>
+                    </Menu>
+
                     <MenuItem text="Preferences..." onAction="#showPreferences"/>
                     <MenuItem text="Show Console" onAction="#showConsole"/>
+                    <MenuItem text="Exit" onAction="#exitProgram"/>
+                </Menu>
+                <Menu text="Project Data">
                     <MenuItem text="Clear Secondary Structure..." onAction="#clearSecondaryStructure"/>
                     <MenuItem text="Clear Project" onAction="#clearProject"/>
                     <MenuItem text="Clear Molecule Order Pars" onAction="#clearOrderPars"/>
                     <MenuItem text="Clear Molecule T1/T2/NOE Pars" onAction="#clearRelaxPars"/>
-                    <MenuItem text="Exit" onAction="#exitProgram"/>
-
-                </Menu>
-                <Menu text="Chart" fx:id="chartMenu">
-                    <MenuItem text="New Chart" onAction="#addChart" fx:id="addChart"/>
-                    <MenuItem text="Remove Active Chart" onAction="#removeChart" fx:id="removeChart"/>
-                    <MenuItem text="Clear Active Chart" onAction="#clearChart" fx:id="clearChart"/>
-                    <Menu text="Add Experimental Data" fx:id="experimentalDataAxisMenu"/>
-                    <Menu text="Add Molecule Data" fx:id="moleculeDataAxisMenu"/>
-                    <Menu text="Groups" fx:id="groupsMenu">
-                        <MenuItem text="T1/T2/NOE" onAction="#showT1T2NoeData"/>
-                        <MenuItem text="ModelFree Pars" onAction="#showModelFreeData"/>
-                        <MenuItem text="ModelFree Pars - S2" onAction="#showModelFreeDataS2"/>
-                        <MenuItem text="ModelFree Pars - Tau" onAction="#showModelFreeDataTau"/>
-                        <Menu text="Order Par Sets" fx:id="orderParSetAxisMenu"/>
-                    </Menu>
                 </Menu>
                 <Menu text="Fitting">
                     <MenuItem text="Fit All" onAction="#fitResidues"/>
@@ -120,7 +109,7 @@
                                             <Label text="AICC: "/>
                                             <Label fx:id="aiccLabel"/>
                                             <Pane prefWidth="10"/>
-                                            <Label text="  RMS: "/>
+                                            <Label text=" WRMS: "/>
                                             <Label fx:id="rmsLabel"/>
                                             <Pane prefWidth="10"/>
                                             <Label text="  rChiSq: "/>
@@ -226,26 +215,8 @@
                                 <CheckBox text="Start Y at 0" fx:id="zeroYCheckBox"/>
                             </VBox>
                         </Tab>
-                        <Tab text="ModelFree" closable="false">
+                        <Tab text="TauC" closable="false">
                             <VBox HBox.hgrow="ALWAYS" spacing="3">
-                                <ToolBar>
-                                    <MenuButton text="Actions">
-                                        <items>
-                                            <MenuItem text="Fit-Isotropic" onAction="#fitR1R2NOEModel"/>
-                                            <MenuItem text="Fit Deuterium-Isotropic"
-                                                      onAction="#fitDeuteriumModel"/>
-                                            <MenuItem text="Interpolate Rates"
-                                                      onAction="#interpolateRates"/>
-                                            <MenuItem text="Calculate Spectral Densities"
-                                                      onAction="#calculateSpectralDensities"/>
-                                            <MenuItem text="Estimate Tau"
-                                                      onAction="#estimateCorrelationTime"/>
-                                        </items>
-                                    </MenuButton>
-                                    <MenuButton fx:id="relaxSetMenu" text="Fields"/>
-                                    <Label text="Bootstrap mode:"/>
-                                    <ChoiceBox fx:id="bootStrapChoice"/>
-                                </ToolBar>
                                 <HBox>
                                     <Label text="R1:  " prefWidth="80"/>
                                     <ChoiceBox fx:id="t1Choice" prefWidth="150"/>
@@ -259,42 +230,87 @@
                                     <Label text="(1/s):" prefWidth="30"/>
                                 </HBox>
                                 <HBox spacing="10">
-                                    <Label text="Tau:  " prefWidth="80"/>
+                                    <Button text="Estimate Tau" onAction="#estimateCorrelationTime"/>
                                     <TextField fx:id="tauCalcField" prefWidth="80"/>
                                     <Label text="(ns)" prefWidth="30"/>
                                 </HBox>
-                                <HBox spacing="10">
-                                    <HBox fx:id="modelBox">
-                                        <Label text="Models:  " prefWidth="80"/>
-                                    </HBox>
-                                    <CheckBox text="Fit Js: " fx:id="fitJCheckBox"/>
-                                </HBox>
-                                <HBox spacing="10">
-                                    <Label text="Lambda-S" prefWidth="80"/>
-                                    <Slider fx:id="sLambdaSlider" prefWidth="150"/>
-                                    <Label fx:id="sLambdaLabel" prefWidth="50"/>
-                                    <CheckBox text="Use Lambda: " fx:id="lambdaCheckBox"/>
-                                </HBox>
-                                <HBox spacing="10">
-                                    <Label text="Lambda-Tau" prefWidth="80"/>
-                                    <Slider fx:id="tauLambdaSlider" prefWidth="150"/>
-                                    <Label fx:id="tauLambdaLabel" prefWidth="50"/>
-                                </HBox>
-                                <HBox spacing="10">
-                                    <Label text="T2 Limit  " prefWidth="80"/>
-                                    <Slider fx:id="t2LimitSlider" prefWidth="150"/>
-                                    <Label fx:id="t2LimitLabel" prefWidth="50"/>
-                                </HBox>
-                                <HBox spacing="10">
-                                    <Label text="Tau Fraction" prefWidth="80"/>
-                                    <Slider fx:id="tauFractionSlider" prefWidth="150"/>
-                                    <Label fx:id="tauFractionLabel" prefWidth="50"/>
-                                </HBox>
-                                <HBox spacing="10">
-                                    <Label text="Bootstrap N" prefWidth="80"/>
-                                    <Slider fx:id="nReplicatesSlider" prefWidth="150"/>
-                                    <Label fx:id="bootstrapNLabel" prefWidth="50"/>
-                                </HBox>
+                            </VBox>
+                        </Tab>
+                        <Tab text="ModelFree" closable="false">
+                            <VBox HBox.hgrow="ALWAYS" spacing="3">
+                                <ToolBar>
+                                    <MenuButton text="Actions">
+                                        <items>
+                                            <MenuItem text="Fit-Isotropic" onAction="#fitModelFree"/>
+                                            <MenuItem text="Interpolate Rates"
+                                                      onAction="#interpolateRates"/>
+                                            <MenuItem text="Calculate Spectral Densities"
+                                                      onAction="#calculateSpectralDensities"/>
+                                        </items>
+                                    </MenuButton>
+                                    <MenuButton fx:id="relaxSetMenu" text="Fields"/>
+                                </ToolBar>
+                                <Accordion>
+                                    <panes>
+                                        <TitledPane text="Model Selection">
+                                            <VBox spacing="10">
+                                                <GridPane fx:id="modelBox" hgap="20" vgap="5">
+                                                </GridPane>
+                                                <HBox spacing="10">
+                                                    <CheckBox text="Use Lambda: " fx:id="lambdaCheckBox"/>
+                                                    <CheckBox text="Fit Js: " fx:id="fitJCheckBox"/>
+                                                    <CheckBox text="Use RQ: " fx:id="useRQCheckBox" selected="true"/>
+                                                </HBox>
+                                                <GridPane>
+                                                    <children>
+                                                        <Label text="S" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                                        <Slider fx:id="sLambdaSlider" prefWidth="150"
+                                                                GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                                        <Label fx:id="sLambdaLabel" prefWidth="50"
+                                                               GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+                                                        <Label text="Tau" GridPane.columnIndex="0"
+                                                               GridPane.rowIndex="1"/>
+                                                        <Slider fx:id="tauLambdaSlider" prefWidth="150"
+                                                                GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                                        <Label fx:id="tauLambdaLabel" prefWidth="50"
+                                                               GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                                                    </children>
+                                                </GridPane>
+                                            </VBox>
+                                        </TitledPane>
+                                        <TitledPane text="Constraints">
+                                            <VBox spacing="10">
+                                                <HBox spacing="10">
+                                                    <Label text="Tau Target" prefWidth="100"/>
+                                                    <TextField fx:id="tauField" prefWidth="60"/>
+                                                </HBox>
+                                                <HBox spacing="10">
+                                                    <Label text="Tau Range" prefWidth="100"/>
+                                                    <Slider fx:id="tauFractionSlider" prefWidth="150"/>
+                                                    <Label fx:id="tauFractionLabel" prefWidth="50"/>
+                                                </HBox>
+                                                <HBox spacing="10">
+                                                    <Label text="T2 Limit  " prefWidth="100"/>
+                                                    <Slider fx:id="t2LimitSlider" prefWidth="150"/>
+                                                    <Label fx:id="t2LimitLabel" prefWidth="50"/>
+                                                </HBox>
+                                            </VBox>
+                                        </TitledPane>
+                                        <TitledPane text="Bootstrap">
+                                            <VBox spacing="10">
+                                                <HBox spacing="10">
+                                                    <Label text="Bootstrap mode:"/>
+                                                    <ChoiceBox fx:id="bootStrapChoice"/>
+                                                </HBox>
+                                                <HBox spacing="10">
+                                                    <Label text="Bootstrap N" prefWidth="80"/>
+                                                    <Slider fx:id="nReplicatesSlider" prefWidth="150"/>
+                                                    <Label fx:id="bootstrapNLabel" prefWidth="50"/>
+                                                </HBox>
+                                            </VBox>
+                                        </TitledPane>
+                                    </panes>
+                                </Accordion>
                             </VBox>
                         </Tab>
                     </TabPane>
@@ -311,15 +327,34 @@
     <left>
     </left>
     <bottom>
-        <HBox>
-            <ToolBar fx:id="navigatorToolBar" BorderPane.alignment="CENTER"/>
-            <StatusBar fx:id="statusBar" HBox.hgrow="ALWAYS"/>
-            <Pane prefWidth="20"/>
-            <ScrollBar fx:id="barScaleScrollBar" prefWidth="250"
-                       value="500" max="1000" visible="1000"/>
-            <Pane prefWidth="20"/>
-            <Slider fx:id="barScaleSlider" prefWidth="250" min="1.0" max="20.0" value="1.0"/>
-        </HBox>
+        <VBox>
+            <ToolBar BorderPane.alignment="CENTER">
+                <Button text="New Chart" onAction="#addChart" fx:id="addChart"/>
+                <Button text="Remove Active Chart" onAction="#removeChart" fx:id="removeChart"/>
+                <Button text="Clear Active Chart" onAction="#clearChart" fx:id="clearChart"/>
+                <MenuButton text="Add Experimental Data" fx:id="experimentalDataAxisMenu"/>
+                <MenuButton text="Add Molecule Data" fx:id="moleculeDataAxisMenu"/>
+                <MenuButton text="Add Group" fx:id="groupsMenu">
+                    <items>
+                        <MenuItem text="T1/T2/NOE" onAction="#showT1T2NoeData"/>
+                        <MenuItem text="ModelFree Pars" onAction="#showModelFreeData"/>
+                        <MenuItem text="ModelFree Pars - S2" onAction="#showModelFreeDataS2"/>
+                        <MenuItem text="ModelFree Pars - Tau" onAction="#showModelFreeDataTau"/>
+                    </items>
+                </MenuButton>
+                <MenuButton text="Order Par Sets" fx:id="orderParSetAxisMenu"/>
+            </ToolBar>
+
+            <HBox>
+                <ToolBar fx:id="navigatorToolBar" BorderPane.alignment="CENTER"/>
+                <StatusBar fx:id="statusBar" HBox.hgrow="ALWAYS"/>
+                <Pane prefWidth="20"/>
+                <ScrollBar fx:id="barScaleScrollBar" prefWidth="250"
+                           value="500" max="1000" visible="1000"/>
+                <Pane prefWidth="20"/>
+                <Slider fx:id="barScaleSlider" prefWidth="250" min="1.0" max="20.0" value="1.0"/>
+            </HBox>
+        </VBox>
     </bottom>
 
 

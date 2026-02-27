@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- /*
+/*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
@@ -23,10 +23,10 @@
 package org.comdnmr.eqnfit;
 
 import org.comdnmr.fit.ResidueFitter;
+import org.comdnmr.modelfree.RelaxEquations;
 import org.comdnmr.modelfree.models.MFModelIso;
 
 /**
- *
  * @author Bruce Johnson
  */
 public class PlotEquation {
@@ -74,29 +74,41 @@ public class PlotEquation {
         return errs;
     }
 
-    public double calculate(double[] pars, double[] xValue) {
-        EquationType equationType = ResidueFitter.getEquationType(expType, name);
-        int[][] map = equationType.makeMap(1);
-        return equationType.calculate(pars, map[0], xValue, 0);
-    }
-
-    public double calculate(double[] xValue) {
+    public double calculate(double[] simPars, double[] xValue) {
+        double val;
         if (expType.startsWith("model")) {
-            return calculateSpectralDensity(xValue);
+            val = calculateSpectralDensity(xValue, simPars);
         } else {
             EquationType equationType = ResidueFitter.getEquationType(expType, name);
             int[][] map = equationType.makeMap(1);
-            double y = equationType.calculate(pars, map[0], xValue, 0);
-            return y;
+            val = equationType.calculate(simPars, map[0], xValue, 0);
+            if (expType.equals("ssr1rho")) {
+                val = Math.log10(val);
+            }
         }
+        return val;
     }
 
+    public double calculate(double[] xValue) { return calculate(pars, xValue); }
+
     private double calculateSpectralDensity(double[] xValue) {
-        var model = MFModelIso.buildModel(expType,true,0.0,0.0,false);
+        return calculateSpectralDensity(xValue, pars);
+    }
+
+    private double calculateSpectralDensity(double[] xValue, double[] simPars) {
+        var model = MFModelIso.buildModel(expType, true, 0.0, 0.0, false);
         double[] omegas = {xValue[0] * 1.0e9};
+        double[] specDens = model.calc(omegas, simPars);
+        return Math.log10(specDens[0] * 1.0e9);
+    }
+
+    private double calculateR(double[] xValue) {
+        var model = MFModelIso.buildModel(expType, true, 0.0, 0.0, false);
+        RelaxEquations relaxEquations = new RelaxEquations(800.0e6, "H", "N");
+
+        double[] omegas = relaxEquations.getOmegas();
         double[] specDens = model.calc(omegas, pars);
-        double y = Math.log10(specDens[0] * 1.0e9);
-        return y;
+        return relaxEquations.R1(specDens);
     }
 
     public double calculate(double xValue) {
@@ -105,8 +117,7 @@ public class PlotEquation {
         double[] ax = new double[extras.length];
         ax[0] = xValue;
         System.arraycopy(extras, 1, ax, 1, extras.length - 1);
-        double y = calculate(ax);
-        return y;
+        return calculate(ax);
     }
 
     public double getMinX() {

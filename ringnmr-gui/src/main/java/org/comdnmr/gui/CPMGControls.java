@@ -186,6 +186,7 @@ public class CPMGControls extends EquationControls {
 
         equationSelector.valueProperty().addListener(e -> {
             equationAction();
+            updateEquations();
         });
         stateSelector.valueProperty().addListener(e -> {
             stateAction();
@@ -206,8 +207,11 @@ public class CPMGControls extends EquationControls {
             List<ParValueInterface> parValues = resInfo.getParValues(equationName, state);
             controller.updateTableWithPars(parValues);
             updateSliders(parValues, equationName);
-             controller.getCurrentExperimentSet().getExperimentData().stream()
-                    .findFirst().ifPresent(e -> setNucleus(e.getNucleusName()));
+            ExperimentSet experimentSet = controller.getCurrentExperimentSet();
+            if (experimentSet != null) {
+                experimentSet.getExperimentData().stream()
+                        .findFirst().ifPresent(e -> setNucleus(e.getNucleusName()));
+            }
             updatingTable = false;
         }
 

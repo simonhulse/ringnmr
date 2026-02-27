@@ -141,7 +141,7 @@ public class FitDeuteriumModel extends FitModel {
         if (!molDataValuesMap.isEmpty()) {
             return testModels(molDataValuesMap, modelNames);
         } else {
-            throw new IllegalStateException("No relaxation data to analyze.  Need T1,T2 and NOE");
+            throw new IllegalStateException("No relaxation data to analyze.  Need R1, R2, RAP");
         }
     }
 
@@ -154,7 +154,7 @@ public class FitDeuteriumModel extends FitModel {
         for (var modelName : modelNames) {
             orderParSetMap.computeIfAbsent("order_parameter_list_" + modelName, OrderParSet::new);
         }
-        orderParSetMap.computeIfAbsent("order_parameter_list_1", OrderParSet::new);
+        orderParSetMap.computeIfAbsent("order_parameter_list_best", OrderParSet::new);
 
         molData.entrySet().stream().sorted(Map.Entry.comparingByKey()).parallel().forEach(e -> {
             updateProgress((double) counts.getAndIncrement() / n);
@@ -186,7 +186,7 @@ public class FitDeuteriumModel extends FitModel {
 
         MFModelIso bestModel = null;
         Score bestScore = null;
-        double lowestAIC = Double.MAX_VALUE;
+        Double lowestAIC = Double.MAX_VALUE;
         boolean localFitTau;
         double localTauFraction;
         if (fitTau(molDataRes)) {
@@ -208,21 +208,20 @@ public class FitDeuteriumModel extends FitModel {
                 if (modelNames.size() > 1) {
                     atom.addOrderPar(orderParSet, orderPar);
                 }
-                if ((bestScore == null) || (score.aicc() < lowestAIC)) {
-                    lowestAIC = score.aicc();
+                if (useLambda || (modelNames.size() == 1) || (score.aicc().isPresent() && ((bestScore == null) || (score.aicc().get() < lowestAIC))))  {
+                    lowestAIC = score.aicc().isPresent() ? score.aicc().get() : null;
                     bestModel = model;
                     bestScore = score;
                 }
             }
         }
 
-
         if (bestScore != null) {
             double[][] replicateData = null;
             if (nReplicates > 2) {
                 replicateData = replicates(molDataRes, bestModel, localTauFraction, localFitTau, bestScore.getPars(), random);
             }
-            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
+            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_best");
             OrderPar orderPar = makeOrderPar(orderParSet, resSource, bestScore, bestModel, bestModel.getParNames(), bestScore.getPars(), replicateData);
             atom.addOrderPar(orderParSet, orderPar);
             atom.addSpectralDensity(key, spectralDensity);
@@ -334,7 +333,7 @@ public class FitDeuteriumModel extends FitModel {
                 rssSum += bestScores[i].rss;
             }
             double rss = rssSum / nReplicates;
-            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_1");
+            OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_best");
             OrderPar orderPar = new OrderPar(orderParSet, resSource, rss, bestScores[0].nValues, parNames.length, bestModel.getName());
             double[] bestPars = new double[parNames.length];
             for (int iPar = 0; iPar < parNames.length; iPar++) {
@@ -380,9 +379,9 @@ public class FitDeuteriumModel extends FitModel {
         PointValuePair best = null;
         for (int i = 0; i < nTries; i++) {
             try {
-                PointValuePair fitResult = relaxFit.fitResidueToModel(start, lower, upper);
-                if ((best == null) || (fitResult.getValue() < best.getValue())) {
-                    best = fitResult;
+                Optional<PointValuePair> fitResultOpt = relaxFit.fitResidueToModel(start, lower, upper);
+                if (fitResultOpt.isPresent() && ((best == null) || (fitResultOpt.get().getValue() < best.getValue()))) {
+                    best = fitResultOpt.get();
                 }
             } catch (Exception iaE) {
             }
@@ -391,7 +390,7 @@ public class FitDeuteriumModel extends FitModel {
             }
         }
         if (best != null) {
-            return relaxFit.score(best.getPoint(), true);
+            return relaxFit.score(best.getPoint(), true, false);
         }
         return null;
     }
@@ -436,11 +435,11 @@ public class FitDeuteriumModel extends FitModel {
         model.setTauFraction(localTauFraction);
         double[] lower = model.getLower();
         double[] upper = model.getUpper();
-        PointValuePair fitResult = relaxFit.fitResidueToModel(pars, lower, upper);
-        if (fitResult == null) {
+        Optional<PointValuePair> fitResultOpt = relaxFit.fitResidueToModel(pars, lower, upper);
+        if (fitResultOpt.isEmpty()) {
             return null;
         } else {
-            return relaxFit.score(fitResult.getPoint(), true);
+            return relaxFit.score(fitResultOpt.get().getPoint(), true);
         }
     }
 

@@ -19,6 +19,8 @@ package org.comdnmr.eqnfit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -174,7 +176,7 @@ public class CPMGFitFunction extends FitFunction {
     }
 
     @Override
-    public double[] simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBounds(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nSim = options.getSampleSize();
         int nPar = start.length;
@@ -189,8 +191,15 @@ public class CPMGFitFunction extends FitFunction {
             for (int k = 0; k < yValues.length; k++) {
                 yValues[k] = yPred[k] + errValues[k] * random.nextGaussian();
             }
-            PointValuePair result = refine(start, lowerBounds, upperBounds,
+            var resultOpt = refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
+            PointValuePair result;
+            if (resultOpt.isEmpty()) {
+                return Optional.empty();
+            } else {
+                result = resultOpt.get();
+            }
+
             double[] rPoint = result.getPoint();
             for (int j = 0; j < nPar; j++) {
                 parValues[j][i] = rPoint[j];
@@ -214,7 +223,7 @@ public class CPMGFitFunction extends FitFunction {
             }
         }
         yValues = yValuesOrig;
-        return parSDev;
+        return Optional.of(parSDev);
     }
 
     private synchronized CPMGFitFunction setupParametricBootstrap(double[] yPred) {
@@ -259,7 +268,7 @@ public class CPMGFitFunction extends FitFunction {
     }
 
     @Override
-    public double[] simBoundsStream(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
+    public Optional<double[]> simBoundsStream(double[] start, double[] lowerBounds, double[] upperBounds, double inputSigma, CoMDOptions options) {
         reportFitness = false;
         int nPar = start.length;
         int nSim = options.getSampleSize();
@@ -268,6 +277,7 @@ public class CPMGFitFunction extends FitFunction {
         rexErrors = new double[nID];
         double[] yPred = simY(start);
         String optimizer = options.getBootStrapOptimizer();
+        AtomicBoolean hadError = new AtomicBoolean(false);
         IntStream.range(0, nSim).parallel().forEach(i -> {
             CPMGFitFunction rDisp;
             if (options.getNonParametricBootstrap()) {
@@ -276,33 +286,44 @@ public class CPMGFitFunction extends FitFunction {
                 rDisp = setupParametricBootstrap(yPred);
             }
 
-            PointValuePair result = rDisp.refine(start, lowerBounds, upperBounds,
+            var resultOpt = rDisp.refine(start, lowerBounds, upperBounds,
                     inputSigma, optimizer);
-            double[] rPoint = result.getPoint();
-            for (int j = 0; j < nPar; j++) {
-                parValues[j][i] = rPoint[j];
-            }
-            parValues[nPar][i] = result.getValue();
+            if (resultOpt.isEmpty()) {
+                hadError.set(true);
+            } else {
+                PointValuePair result = resultOpt.get();
+                double[] rPoint = result.getPoint();
+                for (int j = 0; j < nPar; j++) {
+                    parValues[j][i] = rPoint[j];
+                }
+                parValues[nPar][i] = result.getValue();
 
-            if (equation == CPMGEquation.CPMGSLOW) {
-                for (int j = 0; j < map.length; j++) {
-                    rexValues[j][i] = equation.getRex(result.getPoint(), map[j], xValues[1][0]);
+                if (equation == CPMGEquation.CPMGSLOW) {
+                    for (int j = 0; j < map.length; j++) {
+                        rexValues[j][i] = equation.getRex(result.getPoint(), map[j], xValues[1][0]);
+                    }
                 }
             }
         });
 
-        double[] parSDev = new double[nPar];
-        for (int i = 0; i < nPar; i++) {
-            DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
-            parSDev[i] = dStat.getStandardDeviation();
-        }
-        if (equation == CPMGEquation.CPMGSLOW) {
-            for (int j = 0; j < nID; j++) {
-                DescriptiveStatistics dStat = new DescriptiveStatistics(rexValues[j]);
-                rexErrors[j] = dStat.getStandardDeviation();
+        if (hadError.get()) {
+            return Optional.empty();
+        } else {
+            double[] parSDev = new double[nPar];
+            for (int i = 0; i < nPar; i++) {
+                DescriptiveStatistics dStat = new DescriptiveStatistics(parValues[i]);
+                double v25 = dStat.getPercentile(25);
+                double v75 = dStat.getPercentile(75.0);
+                parSDev[i] = (v75 - v25) / 1.349;
             }
+            if (equation == CPMGEquation.CPMGSLOW) {
+                for (int j = 0; j < nID; j++) {
+                    DescriptiveStatistics dStat = new DescriptiveStatistics(rexValues[j]);
+                    rexErrors[j] = dStat.getStandardDeviation();
+                }
+            }
+            return Optional.of(parSDev);
         }
-        return parSDev;
     }
 
 }

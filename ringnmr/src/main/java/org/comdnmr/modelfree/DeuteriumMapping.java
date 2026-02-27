@@ -18,6 +18,7 @@ public class DeuteriumMapping {
             {0.0, 3.0, 0.0},
             {3.0 / 2.0, 1.0 / 2.0, 1.0}
     };
+
     private DeuteriumMapping() {
 
     }
@@ -54,13 +55,26 @@ public class DeuteriumMapping {
         return new double[][]{dFields, jValues, errors};
     }
 
-    public static double[][] jointMapping(List<Double> rValueList, List<Double> errValueList, List<Double> fields) {
+    public static double[][] jointMapping(List<Double> rValueList, List<Double> errValueList, List<Double> fields, boolean[] typeUsage) {
         int nRows = rValueList.size();
         double[] rValues = rValueList.stream()
                 .mapToDouble(Double::doubleValue)
                 .toArray();
+        int nTypes = 0;
+        for (boolean use : typeUsage) {
+            if (use) {
+                nTypes++;
+            }
+        }
+        int[] typeMap = new int[nTypes];
+        int k = 0;
+        for (int i = 0; i < typeUsage.length; i++) {
+            if (typeUsage[i]) {
+                typeMap[k++] = i;
+            }
+        }
 
-        int nFreqs = nRows / 4;
+        int nFreqs = nRows / nTypes;
 
         List<Double> fieldList = new ArrayList<>();
         fieldList.add(0.0);
@@ -97,32 +111,31 @@ public class DeuteriumMapping {
         Array2DRowRealMatrix matrix = new Array2DRowRealMatrix(nRows, nCols);
 
         for (int iFreq = 0; iFreq < nFreqs; iFreq++) {
-            for (int iType = 0; iType < 4; iType++) {
-                int row = iFreq * 4 + iType;
-                matrix.setEntry(row, 0, elements[iType][0]);
+            for (int iType = 0; iType < nTypes; iType++) {
+                int row = iFreq * nTypes + iType;
+                matrix.setEntry(row, 0, elements[typeMap[iType]][0]);
             }
         }
         for (int iFreq = 0; iFreq < nFreqs; iFreq++) {
             int singleColumn = singleColumns[iFreq];
             int doubleColumn = doubleColumns[iFreq];
-            for (int iType = 0; iType < 4; iType++) {
-                int row = iFreq * 4 + iType;
-                matrix.setEntry(row, singleColumn, elements[iType][1]);
+            for (int iType = 0; iType < nTypes; iType++) {
+                int row = iFreq * nTypes + iType;
+                matrix.setEntry(row, singleColumn, elements[typeMap[iType]][1]);
             }
-            for (int iType = 0; iType < 4; iType++) {
-                int row = iFreq * 4 + iType;
-                matrix.setEntry(row, doubleColumn, elements[iType][2]);
+            for (int iType = 0; iType < nTypes; iType++) {
+                int row = iFreq * nTypes + iType;
+                matrix.setEntry(row, doubleColumn, elements[typeMap[iType]][2]);
             }
         }
 
         double scale = 3.0 * RelaxEquations.QCC2;
 
-        for (int i = 0; i < nRows; i++) {
-            double errScale = 1.0 / errValueList.get(i);
-            for (int j = 0; j < nCols; j++) {
-                matrix.multiplyEntry(i, j, errScale);
+        for (int row = 0; row < nRows; row++) {
+            double errScale = 1.0 / errValueList.get(row);
+            for (int col = 0; col < nCols; col++) {
+                matrix.multiplyEntry(row, col, errScale);
             }
-            //rValues[i] *= errScale;
         }
 
         try {
@@ -130,25 +143,32 @@ public class DeuteriumMapping {
             double[][] jValuesRep = new double[nCols][nReplicates];
             double[][] errs = new double[nCols][nReplicates];
             double[] jValues = new double[nCols];
-            for (int j=0;j<nReplicates;j++) {
+            OLSMultipleLinearRegression olsMultipleLinearRegression = new OLSMultipleLinearRegression();
+            olsMultipleLinearRegression.setNoIntercept(true);
+            for (int iRep = 0; iRep < nReplicates; iRep++) {
                 double[] rTemp = new double[rValues.length];
-                if (nReplicates == 1) {
+                if (iRep == 0) {
                     for (int i = 0; i < nRows; i++) {
                         rTemp[i] = rValues[i] / errValueList.get(i);
                     }
                 } else {
-                    for (int i = 0; i < nRows; i++) {
-                        rTemp[i] = (rValues[i] + random.nextGaussian()  * errValueList.get(i)) / errValueList.get(i);
+                    for (int row = 0; row < nRows; row++) {
+                        rTemp[row] = (rValues[row] + random.nextGaussian() * errValueList.get(row)) / errValueList.get(row);
+
                     }
                 }
-                OLSMultipleLinearRegression olsMultipleLinearRegression = new OLSMultipleLinearRegression();
-                olsMultipleLinearRegression.setNoIntercept(true);
                 olsMultipleLinearRegression.newSampleData(rTemp, matrix.getData());
                 double[] jValues1 = olsMultipleLinearRegression.estimateRegressionParameters();
                 double[] errs1 = olsMultipleLinearRegression.estimateRegressionParametersStandardErrors();
-                for (int i=0;i<jValues1.length;i++) {
-                    jValuesRep[i][j] = jValues1[i];
-                    errs[i][j] = errs1[i];
+                for (int i = 0; i < jValues1.length; i++) {
+                    jValuesRep[i][iRep] = jValues1[i];
+                    errs[i][iRep] = errs1[i];
+                }
+                if (iRep == 0) {
+                    rValues = matrix.operate(jValues1);
+                    for (int ii = 0; ii < rValues.length; ii++) {
+                        rValues[ii] *= errValueList.get(ii);
+                    }
                 }
             }
             var jErrors = new double[jValues.length];
@@ -160,7 +180,7 @@ public class DeuteriumMapping {
                     jErrors[i] = errs[i][0] / scale;
                 } else {
                     DescriptiveStatistics sumStat = new DescriptiveStatistics(jValuesRep[i]);
-                    jValues[i] =  sumStat.getMean() / scale;
+                    jValues[i] = sumStat.getMean() / scale;
                     jErrors[i] = sumStat.getStandardDeviation() / scale;
                 }
                 fitFields[i] = fieldList.get(i);

@@ -34,7 +34,6 @@ import org.nmrfx.chemistry.MoleculeFactory;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 import org.nmrfx.chemistry.relax.ValueSet;
 import org.nmrfx.graphicsio.GraphicsContextInterface;
-import org.nmrfx.graphicsio.GraphicsIOException;
 
 /**
  *
@@ -42,11 +41,13 @@ import org.nmrfx.graphicsio.GraphicsIOException;
  */
 public class ResidueChart extends XYCanvasBarChart {
 
-    static Set<ResonanceSource> selectedResidues = new HashSet<>();
+    private static final Set<SelectionValue> selections = new LinkedHashSet<>();
     static List<String> mapNames = new ArrayList<>();
     public String currentSeriesName = "";
     ValueSet valueSet = null;
     Set<ResonanceSource> dynSources = new HashSet<>();
+
+    public record SelectionValue(String seriesName, ResonanceSource resonanceSource) {}
 
     public static ResidueChart buildChart(Canvas canvas) {
         Axis xAxis = new Axis(Orientation.HORIZONTAL, 0, 100, 400, 100.0);
@@ -60,6 +61,22 @@ public class ResidueChart extends XYCanvasBarChart {
         xAxis = AXIS[0];
         yAxis = AXIS[1];
         init();
+    }
+
+    public static List<ResonanceSource> getSelectedSources() {
+        return selections.stream().map(sR ->sR.resonanceSource).distinct().toList();
+    }
+
+    public static Set<SelectionValue> getSelections() {
+        return selections;
+    }
+
+    public static void clearSelections() {
+        selections.clear();
+    }
+
+    public static void addSelections(List<SelectionValue> values) {
+        selections.addAll(values);
     }
 
     private void init() {
@@ -91,8 +108,8 @@ public class ResidueChart extends XYCanvasBarChart {
             var series = hit.getSeries();
             Object extraValue = value.getExtraValue();
             ResonanceSource resSource = null;
-            if (extraValue instanceof ResonanceSource) {
-                resSource = (ResonanceSource) extraValue;
+            if (extraValue instanceof ResonanceSource resonanceSource) {
+                resSource = resonanceSource;
             }
             String seriesName = getExpSeries(series.getName());
             String statusMessage = seriesName + " " + resSource + " " + String.format("%.2f", value.getYValue());
@@ -110,7 +127,7 @@ public class ResidueChart extends XYCanvasBarChart {
                     showInfo(seriesName, seriesIndex, intOpt.get(), appendMode);
                 }
             } else {
-                selectedResidues.clear();
+                clearSelections();
             }
         }
         return hitChart;
@@ -118,16 +135,13 @@ public class ResidueChart extends XYCanvasBarChart {
 
     @Override
     public void annotate(GraphicsContextInterface gC) {
-        try {
-            if (dynSources != null && !dynSources.isEmpty()) {
-                drawPresenceIndicators(gC);
-            }
-        } catch (GraphicsIOException ex) {
+        if (dynSources != null && !dynSources.isEmpty()) {
+            drawPresenceIndicators(gC);
         }
     }
 
     void seriesChanged() {
-        selectedResidues.clear();
+        clearSelections();
         drawChart();
 
     }
@@ -137,23 +151,18 @@ public class ResidueChart extends XYCanvasBarChart {
         dynSources = valueSet.resonanceSources();
     }
 
-    public Set<ResonanceSource> getSelectedSources() {
-        return selectedResidues;
-    }
-
     void showInfo(String seriesName, int seriesIndex, ResonanceSource resSource, boolean appendMode) {
         if (!appendMode) {
-            selectedResidues.clear();
+            clearSelections();
             if (resSource != null) {
-                selectedResidues.add(resSource);
+                selections.add(new SelectionValue(seriesName, resSource));
             }
             mapNames.clear();
-        } else if (!selectedResidues.contains(resSource)) {
+        } else if (!getSelectedSources().contains(resSource)) {
             if (resSource != null) {
-                selectedResidues.add(resSource);
+                selections.add(new SelectionValue(seriesName, resSource));
             }
         }
-        System.out.println(" Res source is " + resSource);
         currentSeriesName = seriesName;
         String[] seriesNameParts = seriesName.split("\\|");
         String mapName = seriesNameParts[0];
@@ -178,17 +187,15 @@ public class ResidueChart extends XYCanvasBarChart {
         PyController controller = PyController.mainController;
         PlotData xyCanvasChart = controller.xychart;
         String[] seriesNameParts = seriesName.split("\\|");
-        System.out.println("show info se " + seriesName + " " + seriesNameParts.length + " valueset " + valueSet);
         if (seriesNameParts.length < 3) {
             return;
         }
-        String mapName = seriesNameParts[0];
         String equationName = seriesNameParts[1];
         String state = seriesNameParts[2];
         state = "*:" + state.substring(2);
 //        System.out.println("series " + seriesName + " map " + mapName + " eqn " + equationName + " state " + state);
-        ResonanceSource[] resSources = new ResonanceSource[selectedResidues.size()];
-        selectedResidues.toArray(resSources);
+        SelectionValue[] resSources = new SelectionValue[selections.size()];
+        selections.toArray(resSources);
         controller.chartInfo.valueSet = valueSet;
         controller.chartInfo.setResidues(resSources);
         controller.chartInfo.state = state;
@@ -196,10 +203,9 @@ public class ResidueChart extends XYCanvasBarChart {
         controller.chartInfo.mapName.addAll(mapNames);
         controller.chartInfo.equationName = equationName;
 
-        if (valueSet instanceof ExperimentSet) {
-            if (!selectedResidues.isEmpty()) {
-                ExperimentSet experimentSet = (ExperimentSet) valueSet;
-                controller.chartInfo.experimentalResult = experimentSet.getExperimentResult(resSources[0]);
+        if (valueSet instanceof ExperimentSet experimentSet) {
+            if (!selections.isEmpty()) {
+                controller.chartInfo.experimentalResult = experimentSet.getExperimentResult(resSources[0].resonanceSource);
             }
         } else if (valueSet instanceof RelaxationSet) {
         }
@@ -226,7 +232,7 @@ public class ResidueChart extends XYCanvasBarChart {
         return result;
     }
 
-    void drawPresenceIndicators(GraphicsContextInterface gC) throws GraphicsIOException {
+    void drawPresenceIndicators(GraphicsContextInterface gC) {
         if (dynSources != null) {
             for (var dynSource : dynSources) {
                 int resNum = dynSource.getAtom().getResidueNumber();
@@ -235,7 +241,8 @@ public class ResidueChart extends XYCanvasBarChart {
                 double y1 = yAxis.getYOrigin() - yAxis.getHeight() + 2;
                 double width = x2 - x1;
                 double height = yAxis.getHeight() - 4;
-                if (selectedResidues.contains(dynSource)) {
+                boolean hasDyn = selections.stream().map(sV -> sV.resonanceSource).anyMatch(sVres -> sVres == dynSource);
+                if (hasDyn) {
                     gC.setFill(Color.ORANGE);
                 } else {
                     gC.setFill(Color.LIGHTGRAY);

@@ -229,7 +229,7 @@ public class BootstrapSamplePlots {
             SVGGraphicsContext svgGC = new SVGGraphicsContext();
             try {
                 Canvas canvas = activeChart.getCanvas();
-                svgGC.create(true, canvas.getWidth(), canvas.getHeight(), selectedFile.toString());
+                svgGC.create(canvas.getWidth(), canvas.getHeight(), selectedFile.toString());
                 exportChart(svgGC);
                 svgGC.saveFile();
             } catch (GraphicsIOException ex) {

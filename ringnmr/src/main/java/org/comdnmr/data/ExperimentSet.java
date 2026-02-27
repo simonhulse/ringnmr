@@ -23,6 +23,7 @@ import org.nmrfx.chemistry.Atom;
 import org.nmrfx.chemistry.relax.RelaxationValues;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 import org.nmrfx.chemistry.relax.ValueSet;
+import org.nmrfx.chemistry.relax.ValueWithError;
 
 /**
  *
@@ -308,10 +309,10 @@ public class ExperimentSet implements ValueSet {
         return b1Fields;
     }
 
-    public Map<Atom, Double> getParMapData(String eqnName, String state, String parName) {
+    public Map<Atom, ValueWithError> getParMapData(String eqnName, String state, String parName) {
 
         List<ExperimentResult> resValues = getExperimentResults();
-        Map<Atom, Double> resultMap = new HashMap<>();
+        Map<Atom, ValueWithError> resultMap = new HashMap<>();
 
         for (ExperimentResult experimentResult : resValues) {
             if (experimentResult == null) {
@@ -329,7 +330,9 @@ public class ExperimentSet implements ValueSet {
             if (y == null) {
                 continue;
             }
-            resultMap.put(atom, y);
+            Double yErr = experimentResult.getParValue(useEquName, state, parName+".sd");
+            ValueWithError valueError = new ValueWithError(y, yErr);
+            resultMap.put(atom, valueError);
         }
         return resultMap;
     }

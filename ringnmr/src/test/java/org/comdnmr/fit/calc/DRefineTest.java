@@ -231,13 +231,15 @@ public class DRefineTest {
                 double[] start = model.getStart();
                 double[] lower = model.getLower();
                 double[] upper = model.getUpper();
-                PointValuePair fitResult = relaxFit.fitResidueToModel(start, lower, upper);
-                double[] values = fitResult.getPoint();
-                double score = fitResult.getValue();
-                for (double val : values) {
-                    System.out.print(val + " ");
-                }
-                System.out.println(score + " " + key);
+                Optional<PointValuePair> fitOpt = relaxFit.fitResidueToModel(start, lower, upper);
+                fitOpt.ifPresent(fitResult -> {
+                    double[] values = fitResult.getPoint();
+                    double score = fitResult.getValue();
+                    for (double val : values) {
+                        System.out.print(val + " ");
+                    }
+                    System.out.println(score + " " + key);
+                });
             }
         }
     }

@@ -110,6 +110,7 @@ public abstract class MFModelIso extends MFModel {
             case "2f", "D2f" -> new MFModelIso2f(fitTau, tau, tauFrac, fitExchange);
             case "1sf", "D1sf" -> new MFModelIso1sf(fitTau, tau, tauFrac, fitExchange);
             case "2sf", "D2sf" -> new MFModelIso2sf(fitTau, tau, tauFrac, fitExchange);
+            case "2sfx", "D2sfx" -> new MFModelIso2sf(fitTau, tau, tauFrac, fitExchange);
             default -> throw new IllegalArgumentException("Unknown model " + modelName);
         };
         if (modelName.charAt(0) == 'D') {
