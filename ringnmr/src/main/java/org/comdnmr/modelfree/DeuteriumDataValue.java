@@ -3,9 +3,9 @@ package org.comdnmr.modelfree;
 import java.util.Random;
 
 public class DeuteriumDataValue extends RelaxDataValue {
-    final double rQ;
+    double rQ;
     final double rQError;
-    final double rAP;
+    double rAP;
     final double rAPError;
 
     public DeuteriumDataValue(MolDataValues molDataValue, double r1,

@@ -136,6 +136,10 @@ public class RelaxFit {
     public void setRelaxData(Map<String, MolDataValues> molDataValues) {
         this.molDataValues = molDataValues;
     }
+    public void setRelaxData(String key, MolDataValues data) {
+        Map<String, MolDataValues> map = new HashMap<>() {{ put(key, data); }};
+        molDataValues = map;
+    }
 
     public void setDiffusionType(DiffusionType type) {
         this.diffusionType = type;

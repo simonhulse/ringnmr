@@ -5,7 +5,7 @@ import java.util.Random;
 import static org.comdnmr.modelfree.RelaxEquations.*;
 
 public class R1R2NOEDataValue extends RelaxDataValue {
-    final double NOE;
+    double NOE;
     final double NOEerr;
     double rhoError = 0.0;
 

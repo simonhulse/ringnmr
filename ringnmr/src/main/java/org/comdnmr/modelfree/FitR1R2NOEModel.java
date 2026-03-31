@@ -144,15 +144,26 @@ public class FitR1R2NOEModel extends FitModel {
         }
 
         if (!molData.isEmpty()) {
-            if (tau == null) {
-                tau = estimateTau(molData).get("tau");
-            }
+            if (fitSpec.tauMNeedsComputing) fitSpec.setTauM(estimateTau(molData).get("tau"));
 
-            Map<String, ModelFitResult> results = testModels(molData, modelNames);
+            Map<String, ModelFitResult> results = new HashMap<>();
+            molData
+                .entrySet()
+                .stream()
+                .sorted(Comparator.comparing(Map.Entry::getKey))
+                // .parallel()
+                .forEach(
+                    residue ->
+                        results.put(
+                            residue.getKey(),
+                            fitSpec.fit(residue.getKey(), residue.getValue())
+                        )
+                );
             return results;
         } else {
-            throw new IllegalStateException("No relaxation data to analyze.  Need T1,T2 and NOE");
+            throw new IllegalStateException("No relaxation data to analyze. Need T1, T2 and NOE datasets");
         }
+
     }
 
     public Map<String, Double> estimateTau() {
@@ -185,6 +196,7 @@ public class FitR1R2NOEModel extends FitModel {
             return Collections.emptyMap();
         }
     }
+
 
     public  Map<String, ModelFitResult> testModels(Map<String, MolDataValues> molData, List<String> modelNames) {
         Random random = new Random();
@@ -229,8 +241,14 @@ public class FitR1R2NOEModel extends FitModel {
         return results;
     }
 
-    private OrderPar makeOrderPar(OrderParSet orderParSet, MolDataValues resData, Map<String, MolDataValues> molDataRes, String key,
-                                  Score bestScore, MFModelIso bestModel, double[][] repData) {
+    private OrderPar makeOrderPar(
+        OrderParSet orderParSet,
+        MolDataValues resData,
+        String key,
+        Score bestScore,
+        MFModelIso bestModel,
+        double[][] repData
+    ) {
         ResonanceSource resSource = new ResonanceSource(resData.atom);
         Atom atom = resData.atom;
         var parNames = bestModel.getParNames();
@@ -290,7 +308,7 @@ public class FitR1R2NOEModel extends FitModel {
             if (nReplicates > 2) {
                 double[] pars = score.getPars();
                 repData = replicates(molDataRes, model, localTauFraction, localFitTau, pars, random);
-                OrderPar orderPar = makeOrderPar(orderParSet, resData, molDataRes, key, score, model, repData);
+                OrderPar orderPar = makeOrderPar(orderParSet, resData, key, score, model, repData);
             }
             if (useLambda || (modelNames.size() == 1) || (score.aicc().isPresent() && ((bestScore == null) || (score.aicc().get() < lowestAIC))))  {
                 lowestAIC = score.aicc().isPresent() ? score.aicc().get() : null;
@@ -309,7 +327,7 @@ public class FitR1R2NOEModel extends FitModel {
                 replicateData = replicates(molDataRes, bestModel, localTauFraction, localFitTau, pars, random);
             }
             OrderParSet orderParSet = orderParSetMap.get("order_parameter_list_best");
-            OrderPar orderPar = makeOrderPar(orderParSet, resData, molDataRes, key, bestScore, bestModel, replicateData);
+            OrderPar orderPar = makeOrderPar(orderParSet, resData, key, bestScore, bestModel, replicateData);
             ModelFitResult modelFitResult = new ModelFitResult(
                 orderPar,
                 replicateData,
@@ -343,15 +361,14 @@ public class FitR1R2NOEModel extends FitModel {
 
         boolean localFitTau = fitTau(molDataRes);
         double localTauFraction = (localFitTau) ? tauFraction : 0.0;
-        int nExp = resData.dataValues.size();
 
-        BootstrapWeightSampler sampler;
+        BootstrapSampler sampler;
         switch (bootstrapMode) {
             case AGGREGATE:
-                sampler = new NonparametricSampler(nExp);
+                sampler = new NonparametricSampler(resData);
                 break;
             case BAYESIAN:
-                sampler = new BayesianSampler(nExp, getRandomSource(true));
+                sampler = new BayesianSampler(resData);
                 break;
             default:
                 throw new AssertionError("Unreachable");
@@ -368,10 +385,8 @@ public class FitR1R2NOEModel extends FitModel {
                 return Optional.empty();
             }
 
-            double[] weights = sampler.sample();
-            for (var molData : molDataRes.values()) {
-                molData.weight(weights);
-            }
+            MolDataValues replicateData = sampler.sample();
+            molData = new HashMap<>() {{ put(key, replicateData); }};
 
             // Fit each model and retain the one which has the lowest AICc
             Optional<Pair<MFModelIso, Score>> modelScore = Optional.empty();
@@ -388,7 +403,6 @@ public class FitR1R2NOEModel extends FitModel {
             if (modelScore.isEmpty()) return Optional.empty();
             models[i] = modelScore.get().getKey();
             scores[i] = modelScore.get().getValue();
-            scores[i].setWeights(weights);
         }
 
         MFModelIso model2sf = MFModelIso.buildModel("2sf", localFitTau, tau, localTauFraction, fitExchange);

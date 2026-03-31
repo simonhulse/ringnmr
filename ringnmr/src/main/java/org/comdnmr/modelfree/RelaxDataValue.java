@@ -12,10 +12,10 @@ package org.comdnmr.modelfree;
 public class RelaxDataValue  {
 
     final MolDataValues molDataValue;
-    final double R1;
-    final double R1err;
-    final double R2;
-    final double R2err;
+    double R1;
+    double R1err;
+    double R2;
+    double R2err;
     final RelaxEquations relaxObj;
 
     public RelaxDataValue(MolDataValues molDataValue, double r1,

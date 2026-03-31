@@ -60,8 +60,26 @@ public class MolDataValues {
         return sBuilder.toString();
     }
 
+    public int getNValues() {
+        return SpectralDensityCalculator.getNData(dataValues);
+    }
+
     public void weight(double[] weights) {
         this.weights = weights;
+    }
+
+    public double[] getWeights() {
+        double[] weights;
+        if (this.weights == null) {
+            int nWeights = getNValues();
+            weights = new double[nWeights];
+            for (int j = 0; j < nWeights; j++) {
+                weights[j] = 1.0;
+            }
+        } else {
+            weights = this.weights;
+        }
+        return weights;
     }
 
     public void addData(RelaxDataValue value) {

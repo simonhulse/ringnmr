@@ -8,8 +8,13 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-<?import org.comdnmr.gui.XYPlotDataPane?>
+
 <?import org.controlsfx.control.StatusBar?>
+
+<?import org.comdnmr.gui.ValidatedDecimalTextField?>
+<?import org.comdnmr.gui.ValidatedIntegerTextField?>
+<?import org.comdnmr.gui.XYPlotDataPane?>
+
 <BorderPane styleClass="mainFxmlClass"
             xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
             prefWidth="1024" prefHeight="900"
@@ -239,7 +244,7 @@
                                 </HBox>
                             </VBox>
                         </Tab>
-                        <Tab text="ModelFree" closable="false">
+                        <Tab text="Model-free" closable="false">
                             <VBox HBox.hgrow="ALWAYS" spacing="3">
                                 <ToolBar>
                                     <MenuButton text="Actions">
@@ -251,120 +256,226 @@
                                                       onAction="#calculateSpectralDensities"/>
                                             <MenuItem text="Save Independent Spectral Densities"
                                                       onAction="#saveIndependentSpectralDensities"/>
-
                                         </items>
                                     </MenuButton>
                                     <MenuButton fx:id="relaxSetMenu" text="Fields"/>
                                 </ToolBar>
-                                <Accordion>
-                                    <panes>
-                                        <TitledPane text="Model Selection">
-                                            <VBox spacing="10">
-                                                <GridPane fx:id="modelBox" hgap="20" vgap="5">
-                                                </GridPane>
-                                                <HBox spacing="10">
-                                                    <CheckBox text="Use Lambda: " fx:id="lambdaCheckBox"/>
-                                                    <CheckBox text="Fit Js: " fx:id="fitJCheckBox"/>
-                                                    <CheckBox text="Use RQ: " fx:id="useRQCheckBox" selected="true"/>
-                                                </HBox>
-                                                <GridPane hgap="10">
-                                                    <children>
-                                                        <Label
-                                                            text="λ(S²)"
-                                                            GridPane.columnIndex="0"
-                                                            GridPane.rowIndex="0"
-                                                            GridPane.valignment="top"
+                                <VBox>
+                                    <GridPane fx:id="modelSelectionGrid" hgap="10" vgap="10">
+                                        <padding>
+                                            <Insets top="10" right="10" left="10" bottom="10"/>
+                                        </padding>
+                                        <children>
+                                            <Label
+                                                text="Moiety Type:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="0"
+                                                />
+                                            <ChoiceBox
+                                                fx:id="modelAtoms"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="0"
+                                                />
+                                            <Label
+                                                text="Fit Method:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="1"
+                                                />
+                                            <ChoiceBox
+                                                fx:id="fitMethodChoice"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="1"
+                                                />
+                                            <Label
+                                                fx:id="modelsLabel"
+                                                text="Models:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="2"
+                                                />
+                                            <GridPane
+                                                fx:id="modelCheckBoxGrid"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="2"
+                                                hgap="10"
+                                            >
+                                                <children>
+                                                    <CheckBox
+                                                        fx:id="model1CheckBox"
+                                                        text="1"
+                                                        selected="true"
+                                                        GridPane.columnIndex="0"
+                                                        GridPane.rowIndex="0"
                                                         />
-                                                        <Slider
-                                                            fx:id="lambdaSsqSlider"
-                                                            prefWidth="150"
-                                                            GridPane.columnIndex="1"
-                                                            GridPane.rowIndex="0"
+                                                    <CheckBox
+                                                        fx:id="model1fCheckBox"
+                                                        text="1f"
+                                                        selected="true"
+                                                        GridPane.columnIndex="1"
+                                                        GridPane.rowIndex="0"
                                                         />
-                                                        <Label
-                                                            fx:id="lambdaSsqLabel"
-                                                            prefWidth="50"
-                                                            GridPane.columnIndex="2"
-                                                            GridPane.rowIndex="0"
-                                                            GridPane.valignment="top"
+                                                    <CheckBox
+                                                        fx:id="model1sCheckBox"
+                                                        text="1s"
+                                                        selected="true"
+                                                        GridPane.columnIndex="2"
+                                                        GridPane.rowIndex="0"
                                                         />
-
-                                                        <Label
-                                                            text="λ(τf)"
-                                                            GridPane.columnIndex="0"
-                                                            GridPane.rowIndex="1"
-                                                            GridPane.valignment="top"
+                                                    <CheckBox
+                                                        fx:id="model2sCheckBox"
+                                                        text="2s"
+                                                        selected="true"
+                                                        GridPane.columnIndex="3"
+                                                        GridPane.rowIndex="0"
                                                         />
-                                                        <Slider
-                                                            fx:id="lambdaTauFSlider"
-                                                            prefWidth="150"
-                                                            GridPane.columnIndex="1"
-                                                            GridPane.rowIndex="1"
+                                                    <CheckBox
+                                                        fx:id="model2sfCheckBox"
+                                                        text="2sf"
+                                                        selected="true"
+                                                        GridPane.columnIndex="4"
+                                                        GridPane.rowIndex="0"
                                                         />
-                                                        <Label
-                                                            fx:id="lambdaTauFLabel"
-                                                            prefWidth="50"
-                                                            GridPane.columnIndex="2"
-                                                            GridPane.rowIndex="1"
-                                                            GridPane.valignment="top"
+                                                </children>
+                                            </GridPane>
+                                            <Label
+                                                fx:id="lambdaLabel"
+                                                text="λ:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="2"
+                                                />
+                                            <GridPane
+                                                fx:id="lambdasGrid"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="2"
+                                                hgap="10"
+                                            >
+                                                <children>
+                                                    <Label
+                                                        text="S²"
+                                                        GridPane.columnIndex="0"
+                                                        GridPane.rowIndex="0"
                                                         />
-
-                                                        <Label text
-                                                            ="λ(τs)"
-                                                            GridPane.columnIndex="0"
-                                                            GridPane.rowIndex="2"
-                                                            GridPane.valignment="top"
+                                                    <ValidatedDecimalTextField
+                                                        fx:id="lambdaSsqTextField"
+                                                        GridPane.columnIndex="1"
+                                                        GridPane.rowIndex="0"
+                                                        text="0.0"
+                                                        prefWidth="50"
                                                         />
-                                                        <Slider
-                                                            fx:id="lambdaTauSSlider"
-                                                            prefWidth="150"
-                                                            GridPane.columnIndex="1"
-                                                            GridPane.rowIndex="2"
+                                                    <Label
+                                                        text="τf"
+                                                        GridPane.columnIndex="2"
+                                                        GridPane.rowIndex="0"
                                                         />
-                                                        <Label
-                                                            fx:id="lambdaTauSLabel"
-                                                            prefWidth="50"
-                                                            GridPane.columnIndex="2"
-                                                            GridPane.rowIndex="2"
-                                                            GridPane.valignment="top"
+                                                    <ValidatedDecimalTextField
+                                                        fx:id="lambdaTauFTextField"
+                                                        GridPane.columnIndex="3"
+                                                        GridPane.rowIndex="0"
+                                                        text="0.0"
+                                                        prefWidth="50"
                                                         />
-                                                    </children>
-                                                </GridPane>
-                                            </VBox>
-                                        </TitledPane>
-                                        <TitledPane text="Constraints">
-                                            <VBox spacing="10">
-                                                <HBox spacing="10">
-                                                    <Label text="Tau Target" prefWidth="100"/>
-                                                    <TextField fx:id="tauField" prefWidth="60"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="Tau Range" prefWidth="100"/>
-                                                    <Slider fx:id="tauFractionSlider" prefWidth="150"/>
-                                                    <Label fx:id="tauFractionLabel" prefWidth="50"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="T2 Limit  " prefWidth="100"/>
-                                                    <Slider fx:id="t2LimitSlider" prefWidth="150"/>
-                                                    <Label fx:id="t2LimitLabel" prefWidth="50"/>
-                                                </HBox>
-                                            </VBox>
-                                        </TitledPane>
-                                        <TitledPane text="Bootstrap">
-                                            <VBox spacing="10">
-                                                <HBox spacing="10">
-                                                    <Label text="Bootstrap mode:"/>
-                                                    <ChoiceBox fx:id="bootStrapChoice"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="Bootstrap N" prefWidth="80"/>
-                                                    <Slider fx:id="nReplicatesSlider" prefWidth="150"/>
-                                                    <Label fx:id="bootstrapNLabel" prefWidth="50"/>
-                                                </HBox>
-                                            </VBox>
-                                        </TitledPane>
-                                    </panes>
-                                </Accordion>
+                                                    <Label
+                                                        text="τs"
+                                                        GridPane.columnIndex="4"
+                                                        GridPane.rowIndex="0"
+                                                        />
+                                                    <ValidatedDecimalTextField
+                                                        fx:id="lambdaTauSTextField"
+                                                        GridPane.columnIndex="5"
+                                                        GridPane.rowIndex="0"
+                                                        text="0.0"
+                                                        prefWidth="50"
+                                                        />
+                                                </children>
+                                            </GridPane>
+                                            <Label
+                                                text="Hard-code τm:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="3"
+                                                />
+                                            <CheckBox
+                                                fx:id="hardCodeTauMCheck"
+                                                text=""
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="3"
+                                                />
+                                            <Label
+                                                fx:id="tauMLabel"
+                                                text="τm (ns):"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="4"
+                                                />
+                                            <ValidatedDecimalTextField
+                                                fx:id="tauMTextField"
+                                                text=""
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="4"
+                                                prefWidth="50"
+                                                maxWidth="50"
+                                                />
+                                            <Label
+                                                text="Fit τm:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="5"
+                                                />
+                                            <CheckBox
+                                                fx:id="fitTauMCheck"
+                                                text=""
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="5"
+                                                />
+                                            <Label
+                                                fx:id="tauMFractionLabel"
+                                                text="τm fraction:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="6"
+                                                />
+                                            <ValidatedDecimalTextField
+                                                fx:id="tauMFractionTextField"
+                                                text="0.1"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="6"
+                                                prefWidth="50"
+                                                maxWidth="50"
+                                                />
+                                            <Label
+                                                fx:id="r2LimitLabel"
+                                                text="R₂ limit (s⁻¹):"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="7"
+                                                />
+                                            <ValidatedDecimalTextField
+                                                fx:id="r2LimitTextField"
+                                                text=""
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="7"
+                                                prefWidth="50"
+                                                maxWidth="50"
+                                                />
+                                            <Label
+                                                text="Bootstrap Method:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="8"
+                                                />
+                                            <ChoiceBox
+                                                fx:id="bootstrapMethodChoice"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="8"
+                                                />
+                                            <Label
+                                                text="Bootstrap Replicates:"
+                                                GridPane.columnIndex="0"
+                                                GridPane.rowIndex="9"
+                                                />
+                                            <ValidatedIntegerTextField
+                                                fx:id="bootstrapReplicateTextField"
+                                                GridPane.columnIndex="1"
+                                                GridPane.rowIndex="9"
+                                                prefWidth="50"
+                                                maxWidth="50"
+                                                text="100"/>
+                                        </children>
+                                    </GridPane>
+                                </VBox>
                             </VBox>
                         </Tab>
                     </TabPane>

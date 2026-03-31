@@ -20,6 +20,10 @@ import java.util.function.Function;
 public abstract class FitModel implements BasicFitter {
     public static UniformRandomProvider rng = null;
 
+    protected FitSpec fitSpec = new ConventionalFitSpec.Builder()
+        .modelNames(List.of("1", "1f", "1s", "2s", "2sf"))
+        .build();
+
     Double tau;
     boolean fitTau = false;
     boolean fitJ = false;
@@ -60,6 +64,8 @@ public abstract class FitModel implements BasicFitter {
     public void setData(List<Double>[] allXValues, List<Double> yValues, List<Double> errValues) {
 
     }
+
+    public void setFitSpec(FitSpec fitSpec) { this.fitSpec = fitSpec; }
 
     @Override
     public List<ParValueInterface> guessPars(String eqn) {

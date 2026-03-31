@@ -4,15 +4,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- * Class representing a nonparametric bootstrap sampler that extends the {@link BootstrapWeightSampler}.
- * This sampler generates weights in accordance with the protocol outlined by
- * Crawley and Palmer in their
- * <a href="https://mr.copernicus.org/articles/2/251/2021/">2021 paper on bootstrap aggregation</a>.
- *
- * @author simonhulse
- */
-public class NonparametricSampler extends BootstrapWeightSampler {
+public class NonparametricSampler extends WeightSampler {
 
     // Iterator of randomly ordered ints which specifies the ordering of possible weight vectors.
     private final Iterator<Integer> iterator;
@@ -74,8 +66,8 @@ public class NonparametricSampler extends BootstrapWeightSampler {
      *
      * @param nExp the number of static fields (must be between 2 and 4)
      */
-    public NonparametricSampler(int nExp) {
-        super(nExp);
+    public NonparametricSampler(MolDataValues data) {
+        super(data);
         iterator = generateIterator();
     }
 
@@ -108,7 +100,7 @@ public class NonparametricSampler extends BootstrapWeightSampler {
      * @return a 2D array of selection patterns
      */
     private int[][] getSelections() {
-        return SELECTION_MAP.get(nExp);
+        return SELECTION_MAP.get(getNFields());
     }
 
     /**
@@ -131,34 +123,19 @@ public class NonparametricSampler extends BootstrapWeightSampler {
         return nSel * nSel * nSel;
     }
 
-    /**
-     * Samples a set of nonparametric bootstrap weights.
-     * This method can be called a maximum of {@link #getNBootstraps()} times.
-     *
-     * @return an array of sampled weights
-     * @throws NoSuchElementException if the maximum number of samples is exceeded
-     */
-    public double[] sample() {
+    protected double[] sampleWeights() {
         if (!iterator.hasNext()) {
             throw new NoSuchElementException(
                 String.format(
                     "Maximum number of samples exceeded. " +
-                    "This sampler cannot be sampled more than %d^3 = %d times.",
-                    getNSelections(),
-                    getNBootstraps()
+                    "This sampler cannot be sampled more than %d (%d^3) times.",
+                    getNBootstraps(),
+                    getNSelections()
                 )
             );
         }
-        return getWeights(iterator.next());
-    }
+        int index = iterator.next();
 
-    /**
-     * Retrieves weights based on the index.
-     *
-     * @param index the index to retrieve weights for
-     * @return an array of weights corresponding to the selection
-     */
-    private double[] getWeights(int index) {
         int nSel = getNSelections();
         int nSelSq = nSel * nSel;
 
@@ -176,13 +153,12 @@ public class NonparametricSampler extends BootstrapWeightSampler {
             getSelectionsRow(pH)
         };
 
-        double[] weights = new double[getNJ()];
-        for (int i = 0; i < N_FREQS; i++) {
-            for (int j = 0; j < getNExp(); j++) {
-                weights[selections[i][j] * N_FREQS + i] += 1.0;
+        double[] weights = new double[getNValues()];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < getNFields(); j++) {
+                weights[selections[i][j] * 3 + i] += 1.0;
             }
         }
-
         return weights;
     }
 }
