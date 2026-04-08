@@ -5,8 +5,6 @@ import java.util.Map;
 import org.comdnmr.modelfree.models.MFModelIso;
 import org.comdnmr.modelfree.models.MFModelIso2sf;
 
-import org.nmrfx.chemistry.MoleculeBase;
-import org.nmrfx.chemistry.MoleculeFactory;
 import org.nmrfx.chemistry.relax.OrderPar;
 import org.nmrfx.chemistry.relax.OrderParSet;
 
@@ -60,6 +58,15 @@ public class RegularizationFitSpec extends FitSpec {
     }
 
     @Override
+    public String toToml() {
+        StringBuilder builder = getBaseTomlBuilder();
+        builder.append(String.format("lambdaS = %s%n", lambdaS));
+        builder.append(String.format("lambdaTauF = %s%n", lambdaTauF));
+        builder.append(String.format("lambdaTauS = %s", lambdaTauS));
+        return builder.toString();
+    }
+
+    @Override
     protected RelaxFit initRelaxFit(String key, MolDataValues data) {
         RelaxFit relaxFit = super.initRelaxFit(key, data);
         relaxFit.setUseLambda(true);
@@ -71,10 +78,11 @@ public class RegularizationFitSpec extends FitSpec {
 
     private MFModelIso2sf getModel2sf(MolDataValues data) {
         boolean fitTauM = fitTauM(data);
-        return (MFModelIso2sf) MFModelIso.buildModel("2sf", fitTauM, tauM, tauFraction, fitExchange);
+        return (MFModelIso2sf) MFModelIso.buildModel("2sf", fitTauM, tauM, tauMFraction, fitExchange);
     }
 
-    public ModelFitResult fit(String key, MolDataValues data) {
+    @Override
+    public ModelFitResult fit(String key, MolDataValues data, Map<String, OrderParSet> orderParSetMap) {
         RelaxFit relaxFit = initRelaxFit(key, data);
         MFModelIso2sf model = getModel2sf(data);
         data.setTestModel(model);
@@ -97,10 +105,7 @@ public class RegularizationFitSpec extends FitSpec {
             for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
         }
 
-        MoleculeBase moleculeBase = MoleculeFactory.getActive();
-        Map<String, OrderParSet> orderParSetMap = moleculeBase.orderParSetMap();
         orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
-
         // FIXME: not sure what Score should be for makeOrderParSet...
         OrderPar orderPar = makeOrderParSet(
             orderParSetMap.get(KEY),
@@ -111,13 +116,8 @@ public class RegularizationFitSpec extends FitSpec {
             parameters,
             weights
         );
-        ModelFitResult result = new ModelFitResult(
-            orderPar,
-            parameters,
-            null,
-            scores
-        );
-        return result;
+
+        return new ModelFitResult(orderPar, parameters, null);
     }
 
     double getLambdaS() { return lambdaS; }
@@ -126,4 +126,16 @@ public class RegularizationFitSpec extends FitSpec {
 
     double getLambdaTauS() { return lambdaTauS; }
 
+    @Override
+    public int hashCode() {
+        int h = 17;
+        h = 31 * h + super.hashCode();
+        long lambdaSBits = Double.doubleToLongBits(lambdaS);
+        h = 31 * h + (int)(lambdaSBits ^ (lambdaSBits >>> 32));
+        long lambdaTauFBits = Double.doubleToLongBits(lambdaTauF);
+        h = 31 * h + (int)(lambdaTauFBits ^ (lambdaTauFBits >>> 32));
+        long lambdaTauSBits = Double.doubleToLongBits(lambdaTauS);
+        h = 31 * h + (int)(lambdaTauSBits ^ (lambdaTauSBits >>> 32));
+        return h;
+    }
 }

@@ -18,6 +18,18 @@ public class RelaxDataValue  {
     double R2err;
     final RelaxEquations relaxObj;
 
+    public double getR1() { return R1; }
+
+    public double getR1err() { return R1err; }
+
+    public double getR2() { return R2; }
+
+    public double getR2err() { return R2err; }
+
+    public double getB0() { return relaxObj.getSF(); }
+
+    public RelaxEquations getRelaxEquations() { return relaxObj; }
+
     public RelaxDataValue(MolDataValues molDataValue, double r1,
                           double r1Error, double r2, double r2Error,
                           RelaxEquations relaxObj) {

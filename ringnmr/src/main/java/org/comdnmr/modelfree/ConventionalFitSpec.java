@@ -4,12 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.commons.lang3.tuple.Pair;
-
+import org.apache.commons.lang3.tuple.Triple;
 import org.comdnmr.modelfree.models.MFModelIso;
 
-import org.nmrfx.chemistry.MoleculeBase;
-import org.nmrfx.chemistry.MoleculeFactory;
 import org.nmrfx.chemistry.relax.OrderPar;
 import org.nmrfx.chemistry.relax.OrderParSet;
 
@@ -33,68 +30,73 @@ public class ConventionalFitSpec extends ModelSelectionFitSpec {
 
     ConventionalFitSpec(Builder builder) { super(builder); }
 
-    public ModelFitResult fit(String key, MolDataValues data) {
-        RelaxFit relaxFit = new RelaxFit();
-        relaxFit.setFitJ(fitJ);
-        relaxFit.setRelaxData(key, data);
-
-        // Determine the optimal model using the AICc
+    @Override
+    public ModelFitResult fit(String key, MolDataValues data, Map<String, OrderParSet> orderParSetMap) {
+        RelaxFit relaxFit = initRelaxFit(key, data);
         List<MFModelIso> models = getModels(data);
-        Optional<Pair<MFModelIso, Score>> bestModelScore = Optional.empty();
+
+        Optional<Triple<Score, ModelFitResult, MFModelIso>> best = Optional.empty();
+        int nWeights = data.getNValues();
         for (MFModelIso model : models) {
             data.setTestModel(model);
+
+            // Perform bootstrapping to estimate parameter errors
+            int nParameters = model.getNPars();
+            double[][] parameters = new double[nReplicates][nParameters];
+            double[][] weights = new double[nReplicates][nWeights];
+            BootstrapSampler sampler = getBootstrapSampler(data);
+
+            for (int i = 0; i < nReplicates; i++) {
+                MolDataValues replicateData = sampler.sample();
+                relaxFit.setRelaxData(key, replicateData);
+                Score replicateScore = runFit(relaxFit, model);
+                double[] replicateParameters = replicateScore.getPars();
+                double[] replicateWeights = replicateData.getWeights();
+                for (int k = 0; k < nParameters; k++) parameters[i][k] = replicateParameters[k];
+                for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
+            }
+
+            // Determine the optimal model using the AICc
+            data = sampler.getOriginalData();
+            relaxFit.setRelaxData(key, data);
             Score score = runFit(relaxFit, model);
-            if (
-                bestModelScore.isEmpty() ||
-                score.aicc().get() < bestModelScore.get().getRight().aicc().get()
-            ) {
-                bestModelScore = Optional.of(Pair.of(model, score));
+
+            String resultKey = makeKey(model.getName());
+            orderParSetMap.computeIfAbsent(resultKey, k -> new OrderParSet(k));
+            OrderPar orderPar = makeOrderParSet(
+                orderParSetMap.get(resultKey),
+                sampler.getOriginalData(),
+                key,
+                score,
+                model,
+                parameters,
+                weights
+            );
+
+            if (best.isEmpty() || score.aicc().get() < best.get().getLeft().aicc().get()) {
+                ModelFitResult result = new ModelFitResult(orderPar, parameters, null);
+                best = Optional.of(Triple.of(score, result, model));
             }
         }
 
-        if (bestModelScore.isEmpty()) {
-            throw new AssertionError("`bestModelScore` should not be empty here!");
-        }
+        // FIXME: currently don't see the best OrderParSet in RING with this code...
+        // String bestModelName = best
+        //     .orElseThrow(() -> new AssertionError("`best` should not be empty here!"))
+        //     .getRight()
+        //     .getName();
+        // orderParSetMap.put(makeBestKey(bestModelName), orderParSetMap.get(makeKey(bestModelName)));
+        // System.out.printf("orderParSetMap: %s%n", orderParSetMap);
 
-        MFModelIso bestModel = bestModelScore.get().getLeft();
-        Score bestScore = bestModelScore.get().getRight();
-        data.setTestModel(bestModel);
-        int nParameters = bestModel.getNPars();
-        int nWeights = data.getNValues();
-        double[][] parameters = new double[nReplicates][nParameters];
-        double[][] weights = new double[nReplicates][nWeights];
-        BootstrapSampler sampler = getBootstrapSampler(data);
+        return best
+            .orElseThrow(() -> new AssertionError("`best` should not be empty here!"))
+            .getMiddle();
+    }
 
-        for (int i = 0; i < nReplicates; i++) {
-            MolDataValues replicateData = sampler.sample();
-            relaxFit.setRelaxData(key, replicateData);
-            Score score = runFit(relaxFit, bestModel);
-            double[] replicateParameters = score.getPars();
-            double[] replicateWeights = replicateData.getWeights();
-            for (int k = 0; k < nParameters; k++) parameters[i][k] = replicateParameters[k];
-            for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
-        }
+    private String makeKey(String modelName) {
+        return String.format("%s-%s", KEY, modelName.replace("model", ""));
+    }
 
-        MoleculeBase moleculeBase = MoleculeFactory.getActive();
-        Map<String, OrderParSet> orderParSetMap = moleculeBase.orderParSetMap();
-        orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
-        OrderPar orderPar = makeOrderParSet(
-            orderParSetMap.get(KEY),
-            sampler.getOriginalData(),
-            key,
-            bestScore,
-            bestModel,
-            parameters,
-            weights
-        );
-
-        ModelFitResult result = new ModelFitResult(
-            orderPar,
-            parameters,
-            null,
-            new Score[]{bestScore}
-        );
-
-        return result;
+    private String makeBestKey(String modelName) {
+        return String.format("%s-%s-%s", KEY, "BEST", modelName);
     }
 }

@@ -53,15 +53,22 @@ public class MFModelIso1 extends MFModelIso {
     public double spectralDensity(double s2, double omega, double tau) {
         return 0.4 * s2 / sN * tau / (1.0 + Math.pow(omega * tau, 2.0));
     }
+
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
-        int j = 0;
+        double tauM = 1.0e-9 * this.tauM;
+        double sf2 = this.sf2 / sN;
+
+        double sf2TauMTimesPt4 = 0.4 * sf2 * tauM;
+        double tauM2 = tauM * tauM;
+
+        int index = 0;
+        double[] js = new double[omegas.length];
         for (double omega : omegas) {
-            omega *= 1.0e-9;
-            J[j++] = 1.0e-9 * spectralDensity(sf2, omega, tauM);
+            double omega2 = omega * omega;
+            js[index++] = sf2TauMTimesPt4 / (1.0 + omega2 * tauM2);
         }
-        return J;
+        return js;
     }
 
     @Override

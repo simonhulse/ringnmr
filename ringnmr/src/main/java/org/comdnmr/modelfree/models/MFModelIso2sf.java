@@ -29,14 +29,14 @@ import java.util.List;
  * @author brucejohnson
  * @author simonhulse
  */
-public class MFModelIso2sf extends MFModelIso2f {
-    protected static double tauPrime = 30.0e-3;
-    double tauS;
+public class MFModelIso2sf extends MFModelIso2s {
+
+    private static final double TAU_PRIME = 30.0e-12;
+
+    double tauF;
     double complexityS = 0.0;
     double complexityTauF = 0.0;
     double complexityTauS = 0.0;
-
-    private static final double TAU_PRIME = 30.0e-12;
 
     public MFModelIso2sf(boolean fitTau, double targetTau, double tauFraction,
             boolean includeEx) {
@@ -59,28 +59,51 @@ public class MFModelIso2sf extends MFModelIso2f {
 
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
-        int j = 0;
-        double tauMx = 1.0e-9 * tauM;
-        double tauFx = 1.0e-9 * tauF;
-        double tauSx = 1.0e-9 * tauS;
+        double tauM = 1.0e-9 * this.tauM;
+        double tauF = 1.0e-9 * this.tauF;
+        double tauS = 1.0e-9 * this.tauS;
         double ss2 = this.ss2;
         double sf2 = this.sf2 / sN;
         double s2 = ss2 * sf2;
+
+        // TODO: Exactly the same as 1sf. Should think about DRY
+        double tauMTimesPt4 = 0.4 * tauM;
+        double tauM2 = tauM * tauM;
+        double tauF2 = tauF * tauF;
+        double tauS2 = tauS * tauS;
+        double tauMPlusTauF = tauM + tauF;
+        double tauMPlusTauF2 = tauMPlusTauF * tauMPlusTauF;
+        double tauMPlusTauS = tauM + tauS;
+        double tauMPlusTauS2 = tauMPlusTauS * tauMPlusTauS;
+        double tauFTimesTauS = tauF * tauS;
+        double tauPrime = tauF * (tauM + tauS) + tauM * tauS;
+        double tauPrime2 = tauPrime * tauPrime;
+        double tauM2TimesTauF2 = tauM2 * tauF2;
+        double tauM2TimesTauS2 = tauM2 * tauS2;
+        double tauM2TimesTauF2TimesTauS2 = tauM2 * tauF2 * tauS2;
+
+        double[] js = new double[omegas.length];
+        int index = 0;
         for (double omega : omegas) {
-            double vM = s2 / (1.0 + omega * omega * tauMx * tauMx);
-            double vMF = ((1.0 - sf2) * tauFx * (tauMx + tauFx))
-                    / (omega * omega * tauMx * tauMx * tauFx * tauFx + (tauMx + tauFx) * (tauMx + tauFx));
-            double vMS = (sf2 * (1.0 - ss2) * tauSx * (tauMx + tauSx))
-                    / (omega * omega * tauMx * tauMx * tauSx * tauSx + (tauMx + tauSx) * (tauMx + tauSx));
-            J[j++] = 0.4 * tauMx * (vM + vMF + vMS);
+            double omega2 = omega * omega;
+            double term1 = s2 / (1.0 + omega2 * tauM2);
+            double term2 = sf2 * (1.0 - ss2) * (
+                (tauS * tauMPlusTauS) / (omega2 * tauM2TimesTauS2 + tauMPlusTauS2)
+            );
+            double term3 = (1.0 - sf2) * ss2 * (
+                (tauF * tauMPlusTauF) / (omega2 * tauM2TimesTauF2 + tauMPlusTauF2)
+            );
+            double term4 = (1.0 - sf2) * (1.0 - ss2) * (
+                (tauFTimesTauS * tauPrime) / (omega2 * tauM2TimesTauF2TimesTauS2 + tauPrime2)
+            );
+            js[index++] = tauMTimesPt4 * (term1 + term2 + term3 + term4);
         }
 
         complexityS = Math.abs(1.0 - sf2) + Math.abs(1.0 - ss2);
-        complexityTauF = Math.log10((tauFx + TAU_PRIME) / TAU_PRIME);
-        complexityTauS = Math.log10((tauSx + TAU_PRIME) / TAU_PRIME);
+        complexityTauF = Math.log10((tauF + TAU_PRIME) / TAU_PRIME);
+        complexityTauS = Math.log10((tauS + TAU_PRIME) / TAU_PRIME);
 
-        return J;
+        return js;
     }
 
     @Override

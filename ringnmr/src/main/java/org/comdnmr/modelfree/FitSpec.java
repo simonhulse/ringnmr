@@ -11,6 +11,11 @@ import org.nmrfx.chemistry.relax.OrderParSet;
 import org.nmrfx.chemistry.relax.ResonanceSource;
 import org.nmrfx.chemistry.relax.SpectralDensity;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Formatter;
+
 
 // TODO: if tauM is not specified, it must be estimated using the data.
 // Including the Map<String, MolDataValues> into the build method will allow
@@ -24,8 +29,8 @@ public abstract class FitSpec {
     protected final boolean fitJ; // TODO: Currently not supported
     protected final BootstrapMode bootstrapMode;
     protected final boolean fitExchange; // TODO: Currently not supported
-    protected final double tauFraction;
-    protected final double t2Limit;
+    protected final double tauMFraction;
+    protected final double r2Limit;
     protected final int nReplicates;
 
     private static final Map<String, Class<? extends FitSpec>> CLASSES = new LinkedHashMap<>();
@@ -47,12 +52,12 @@ public abstract class FitSpec {
         this.fitJ = builder.fitJ;
         this.bootstrapMode = builder.bootstrapMode;
         this.fitExchange = builder.fitExchange;
-        this.tauFraction = builder.tauFraction;
-        this.t2Limit = builder.t2Limit;
+        this.tauMFraction = builder.tauMFraction;
+        this.r2Limit = builder.r2Limit;
         this.nReplicates = builder.nReplicates;
     }
 
-    public abstract ModelFitResult fit(String key, MolDataValues data);
+    public abstract ModelFitResult fit(String key, MolDataValues data, Map<String, OrderParSet> orderParSetMap);
 
     public static List<String> getNames() { return new ArrayList<>(CLASSES.keySet()); }
 
@@ -69,9 +74,14 @@ public abstract class FitSpec {
         }
     }
 
-    protected static Score runFit(RelaxFit relaxFit, MFModelIso model) {
+    protected Score runFit(RelaxFit relaxFit, MFModelIso model) {
         double[] start = model.getStart();
         double[] lower = model.getLower();
+        // FIXME: Hacky way to set lower bounds to 0 for regularization
+        // should be a more elegant way to do this
+        if (this.getClass() == RegularizationFitSpec.class) {
+            lower = new double[lower.length];
+        }
         double[] upper = model.getUpper();
 
         Optional<PointValuePair> result = relaxFit.fitResidueToModel(start, lower, upper);
@@ -79,6 +89,30 @@ public abstract class FitSpec {
             throw new RuntimeException("Could not generate fit result.");
         }
         return relaxFit.score(result.get().getPoint(), true);
+    }
+
+    abstract public String toToml();
+
+    protected StringBuilder getBaseTomlBuilder() {
+        StringBuilder builder = new StringBuilder("[fit_specification]\n");
+        builder.append(
+            String.format(
+                "method = \"%s\"%n",
+                this
+                    .getClass()
+                    .getSimpleName()
+                    .toLowerCase()
+                    .replace("fitspec", "")
+            )
+        );
+        builder.append(String.format("tauM = %s%n", tauM));
+        builder.append(String.format("fitTauM = %b%n", fitTauM));
+        builder.append(String.format("tauMFraction = %s%n", tauMFraction));
+        builder.append(String.format("r2Limit = %s%n", r2Limit));
+        builder.append(String.format("fitJ = %b%n", fitJ));
+        builder.append(String.format("bootstrapMode = \"%s\"%n", bootstrapMode.toString().toLowerCase()));
+        builder.append(String.format("nReplicates = %d%n", nReplicates));
+        return builder;
     }
 
     public boolean tauMNeedsComputing() {
@@ -98,13 +132,18 @@ public abstract class FitSpec {
     }
 
     public boolean fitTauM(MolDataValues data) {
-        return fitTauM && data.getData().stream().anyMatch(value -> value.R2 > t2Limit);
+        return fitTauM && data.getData().stream().anyMatch(value -> value.R2 > r2Limit);
     }
 
     public enum BootstrapMode {
         PARAMETRIC,
         NONPARAMETRIC,
         BAYESIAN
+    }
+
+    public enum MoietyType {
+        N15_H1,
+        C13_H2
     }
 
     public BootstrapSampler getBootstrapSampler(MolDataValues data) {
@@ -114,6 +153,7 @@ public abstract class FitSpec {
             case BAYESIAN -> new BayesianSampler(data);
         };
     }
+
 
     protected RelaxFit initRelaxFit(String key, MolDataValues data) {
         RelaxFit relaxFit = new RelaxFit();
@@ -201,7 +241,6 @@ public abstract class FitSpec {
         return Pair.of(parameterMeans, parameterErrors);
     }
 
-
     protected OrderPar makeOrderParSet(
         OrderParSet orderParSet,
         MolDataValues data,
@@ -240,14 +279,100 @@ public abstract class FitSpec {
         return orderPar;
     }
 
+    @Override
+    public int hashCode() {
+        int h = 17;
+        long tauMBits = Double.doubleToLongBits(tauM);
+        h = 31 * h + (int)(tauMBits ^ (tauMBits >>> 32));
+        h = 31 * h + (tauMNeedsComputing ? 1 : 0);
+        h = 31 * h + (fitTauM ? 1 : 0);
+        h = 31 * h + (fitJ ? 1 : 0);
+        h = 31 * h + (bootstrapMode == null ? 0 : bootstrapMode.hashCode());
+        h = 31 * h + (fitExchange ? 1 : 0);
+        long tauMFractionBits = Double.doubleToLongBits(tauMFraction);
+        h = 31 * h + (int)(tauMFractionBits ^ (tauMFractionBits >>> 32));
+        long r2LimitBits = Double.doubleToLongBits(r2Limit);
+        h = 31 * h + (int)(r2LimitBits ^ (r2LimitBits >>> 32));
+        h = 31 * h + nReplicates;
+        h = 31 * h + this.getClass().hashCode();
+        return h;
+    }
+
+    protected String canonicalStateString() {
+        StringBuilder sb = new StringBuilder();
+        // include concrete class so different subclasses differ
+        sb.append(this.getClass().getName()).append('|');
+
+        // core FitSpec fields in a fixed order
+        sb.append("tauM=").append(Double.doubleToLongBits(tauM)).append('|');
+        sb.append("tauMNeedsComputing=").append(tauMNeedsComputing).append('|');
+        sb.append("fitTauM=").append(fitTauM).append('|');
+        sb.append("fitJ=").append(fitJ).append('|');
+        sb.append("bootstrapMode=").append(bootstrapMode == null ? "null" : bootstrapMode.name()).append('|');
+        sb.append("fitExchange=").append(fitExchange).append('|');
+        sb.append("tauMFraction=").append(Double.doubleToLongBits(tauMFraction)).append('|');
+        sb.append("r2Limit=").append(Double.doubleToLongBits(r2Limit)).append('|');
+        sb.append("nReplicates=").append(nReplicates).append('|');
+
+        // hook for subclasses to append their fields in a deterministic way
+        appendSubclassState(sb);
+
+        return sb.toString();
+    }
+
+    /**
+     * Subclasses should override to append their additional fields in a stable,
+     * deterministic order. Default does nothing.
+     */
+    protected void appendSubclassState(StringBuilder sb) {
+        // default: nothing
+    }
+
+    /**
+     * Compute SHA-256 hex fingerprint of the canonical state and return the first
+     * `hexLength` hex chars (must be even and between 2 and 64).
+     */
+    protected String stateFingerprintHex(int hexLength) {
+        if (hexLength <= 0 || hexLength > 64) throw new IllegalArgumentException("hexLength 1..64");
+        byte[] digest;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = canonicalStateString().getBytes(StandardCharsets.UTF_8);
+            digest = md.digest(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        // convert to hex
+        StringBuilder hex = new StringBuilder(64);
+        try (Formatter fmt = new Formatter(hex)) {
+            for (byte b : digest) {
+                fmt.format("%02x", b);
+            }
+        }
+        // return prefix of requested length
+        return hex.substring(0, Math.min(hexLength, hex.length()));
+    }
+
+    /**
+     * Produce a safe filename using a short fingerprint. Example: "<base>-<fp>.toml".
+     * `hexLength` recommended >= 16; choose shorter if you want shorter names.
+     */
+    public String filenameWithFingerprint(String baseName, int hexLength, String extension) {
+        String fp = stateFingerprintHex(hexLength);
+        String ext = (extension == null || extension.isEmpty()) ? "" : "." + extension;
+        return String.format("%s-%s%s", baseName, fp, ext);
+    }
+
+
     public static abstract class Builder<T extends Builder<T>> {
         private Optional<Double> tauM = Optional.empty();
         private boolean fitTauM = false;
         private boolean fitJ = true;
         private BootstrapMode bootstrapMode = BootstrapMode.PARAMETRIC;
         private boolean fitExchange = false; // Currently not supported
-        private double tauFraction = 0.25;
-        private double t2Limit = 0.0;
+        private double tauMFraction = 0.25;
+        private double r2Limit = 0.0;
         // 25 is smaller than 27, the maximum number of iterates possible for a
         // 2-field dataset when using nonparametric bootstrapping.
         // It therefore will not lead to an unexpected error if the user simply
@@ -288,13 +413,13 @@ public abstract class FitSpec {
             return self();
         }
 
-        public T tauFraction(double tauFraction) {
-            this.tauFraction = tauFraction;
+        public T tauMFraction(double tauMFraction) {
+            this.tauMFraction = tauMFraction;
             return self();
         }
 
-        public T t2Limit(double t2Limit) {
-            this.t2Limit = t2Limit;
+        public T r2Limit(double r2Limit) {
+            this.r2Limit = r2Limit;
             return self();
         }
 

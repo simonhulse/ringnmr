@@ -26,7 +26,7 @@ public abstract class BootstrapSampler implements ObjectSampler<MolDataValues> {
     }
 
     public int getNFields() {
-        return getNValues() / 3;
+        return data.dataValues.size();
     }
 
     public abstract MolDataValues sample();

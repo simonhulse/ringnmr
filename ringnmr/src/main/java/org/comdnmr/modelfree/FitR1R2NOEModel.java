@@ -39,7 +39,7 @@ public class FitR1R2NOEModel extends FitModel {
         this.molData = molData;
     }
 
-    Map<String, MolDataValues> getData(boolean requireCoords) {
+    public Map<String, MolDataValues> getData(boolean requireCoords) {
         Map<String, MolDataValues> molDataValues = new HashMap<>();
         MoleculeBase mol = MoleculeFactory.getActive();
         if (mol != null) {
@@ -145,23 +145,41 @@ public class FitR1R2NOEModel extends FitModel {
 
         if (!molData.isEmpty()) {
             if (fitSpec.tauMNeedsComputing) fitSpec.setTauM(estimateTau(molData).get("tau"));
+            AtomicInteger counts = new AtomicInteger();
+            int n = molData.entrySet().size();
+            MoleculeBase moleculeBase = MoleculeFactory.getActive();
+            Map<String, OrderParSet> orderParSetMap = new ConcurrentHashMap<>();
+            orderParSetMap.putAll(moleculeBase.orderParSetMap());
 
-            Map<String, ModelFitResult> results = new HashMap<>();
-            molData
-                .entrySet()
-                .stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
-                // .parallel()
+            // I Was having issues getting fitting to run concurrently across residues.
+            // Using molData.entrySet().parallelStream(),
+            // all fits were being performed successively in the main thread.
+            //
+            // I found that creating the parallelStream from an
+            // ArrayList<Map.Entry<String, MolDataValues>> instead of the
+            // Map<String, MolDataValues> did leave to parallelism.
+            //
+            // Some info from Chat-GPT:
+            // molData.entrySet() may return a spliterator that doesn't split
+            // well (synchronized wrapper, custom Map, or other), so work
+            // stayed on one worker. Copying to ArrayList gives a highly
+            // splittable source.
+            Map<String, ModelFitResult> results = new ConcurrentHashMap<>();
+            new ArrayList<>(molData.entrySet())
+                .parallelStream()
                 .forEach(
-                    residue ->
-                        results.put(
-                            residue.getKey(),
-                            fitSpec.fit(residue.getKey(), residue.getValue())
-                        )
+                    residue -> {
+                        updateProgress((double) counts.get() / n);
+                        if (cancelled.get()) return;
+                        String key = residue.getKey();
+                        MolDataValues data = residue.getValue();
+                        if (!data.getData().isEmpty()) results.put(key, fitSpec.fit(key, data, orderParSetMap));
+                        counts.incrementAndGet();
+                    }
                 );
             return results;
         } else {
-            throw new IllegalStateException("No relaxation data to analyze. Need T1, T2 and NOE datasets");
+            throw new IllegalStateException("No relaxation data to analyze. Need R1, R2, and NOE");
         }
 
     }
@@ -331,8 +349,7 @@ public class FitR1R2NOEModel extends FitModel {
             ModelFitResult modelFitResult = new ModelFitResult(
                 orderPar,
                 replicateData,
-                null,
-                new Score[]{bestScore}
+                null
             );
             result = Optional.of(modelFitResult);
         }
@@ -432,7 +449,7 @@ public class FitR1R2NOEModel extends FitModel {
         atom.addSpectralDensity(key, spectralDensity);
         resData.setTestModel(model2sf);
 
-        ModelFitResult result = new ModelFitResult(orderPar, makeBaggingParameters(models, scores), null, scores);
+        ModelFitResult result = new ModelFitResult(orderPar, makeBaggingParameters(models, scores), null);
         return Optional.of(result);
     }
 

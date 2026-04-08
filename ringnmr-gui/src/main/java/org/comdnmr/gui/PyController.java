@@ -60,6 +60,7 @@ import org.comdnmr.data.*;
 import org.comdnmr.eqnfit.*;
 import org.comdnmr.fit.ResidueFitter;
 import org.comdnmr.modelfree.*;
+import org.comdnmr.modelfree.FitSpec.MoietyType;
 import org.comdnmr.modelfree.models.MFModelIso;
 import org.comdnmr.modelfree.models.OrderParameterTool;
 import org.comdnmr.util.CoMDOptions;
@@ -234,6 +235,8 @@ public class PyController implements Initializable {
     CheckBox model1fCheckBox;
     @FXML
     CheckBox model1sCheckBox;
+    @FXML
+    CheckBox model1fsCheckBox;
     @FXML
     CheckBox model2sCheckBox;
     @FXML
@@ -571,6 +574,14 @@ public class PyController implements Initializable {
         // Moeity type being considered in model-free fitting
         modelAtoms.getItems().addAll("¹H-¹⁵N", "²H-¹³C");
         modelAtoms.setValue("¹H-¹⁵N");
+        modelAtoms
+            .getSelectionModel()
+            .selectedItemProperty()
+            .addListener(
+                (ObservableValue<? extends String> obs, String oldValue, String newValue)
+                    -> updateModelAtoms(newValue)
+            );
+
 
         // Model-free: fitting method (conventional, bagging, regularization)
         fitMethodChoice.getItems().addAll(FitSpec.getNames());
@@ -1477,6 +1488,16 @@ public class PyController implements Initializable {
         alert.showAndWait();
     }
 
+    private void updateModelAtoms(String newValue) {
+        if (newValue.equals("¹H-¹⁵N")) {
+            model1sCheckBox.setText("1s");
+        } else if (newValue.equals("²H-¹³C")) {
+            model1sCheckBox.setText("1sf");
+        } else {
+            throw new AssertionError("Unsupported moiety");
+        }
+    }
+
     public void fitModelFree() {
         try {
             checkForInvalidTextFields();
@@ -1484,15 +1505,20 @@ public class PyController implements Initializable {
             showWarningDialog(e);
             return;
         }
+        FitModel fitModel;
+        String modelPrefix;
         if (modelAtoms.getValue().equals("¹H-¹⁵N")) {
-            fitR1R2NOEModel();
+            fitModel = new FitR1R2NOEModel();
+            modelPrefix = "";
         } else if (modelAtoms.getValue().equals("²H-¹³C")) {
-            // FIXME: Implement Deuterium fitting
-            throw new RuntimeException("Deuterium fitting needs to be implemented!");
-            // fitDeuteriumModel();
+            // TODO: useRQCheckBox
+            SpectralDensityCalculator.setUseRQ(true);
+            fitModel = new FitDeuteriumModel();
+            modelPrefix = "D";
         } else {
             throw new AssertionError("Unsupported moiety");
         }
+        fitIsotropicModel(fitModel, modelPrefix);
     }
 
     private List<ValidatedTextField<?>> getValidatedTextFields() {
@@ -1516,32 +1542,16 @@ public class PyController implements Initializable {
         }
     }
 
-    public void fitR1R2NOEModel() {
-        modelFitter = new FitR1R2NOEModel();
-        fitIsotropicModel(modelFitter, "");
-    }
-
-    // TODO: Deuterium fitting
-    // public void fitDeuteriumModel() {
-    //     modelFitter = new FitDeuteriumModel();
-    //     fitJCheckBox.setSelected(true);
-    //     if (modelCheckBoxes.stream().filter(CheckBox::isSelected).findAny().isEmpty()) {
-    //         modelCheckBoxes.stream().filter(m -> m.getText().equals("1f")).findAny().ifPresent(m -> m.setSelected(true));
-    //     }
-    //     SpectralDensityCalculator.setUseRQ(useRQCheckBox.isSelected());
-    //     fitIsotropicModel(modelFitter, "D");
-    // }
-
     private Class<? extends FitSpec> getFitSpecClass() {
         return FitSpec.getFitSpec(fitMethodChoice.getValue());
     }
 
-    public void fitIsotropicModel(FitModel fitModel, String prefix) {
+    public void fitIsotropicModel(FitModel fitModel, String modelPrefix) {
         Class<? extends FitSpec> fitSpecClass = getFitSpecClass();
         FitSpec.Builder fitSpecBuilder;
         if (fitSpecClass == ConventionalFitSpec.class) {
             fitSpecBuilder = new ConventionalFitSpec.Builder()
-                .modelNames(getActiveModelNames());
+                .modelNames(getActiveModelNames(modelPrefix));
         } else if (fitSpecClass == BaggingFitSpec.class) {
             fitSpecBuilder = new BaggingFitSpec.Builder();
         } else if (fitSpecClass == RegularizationFitSpec.class) {
@@ -1551,31 +1561,29 @@ public class PyController implements Initializable {
                 .lambdaTauS(lambdaTauSTextField.getValue().get());
         } else {
             throw new AssertionError(
-                "ConventionalFitSpec, BaggingFitSpec, RegularizationFitSpec are the only subclasses of FitSpec."
+                "ConventionalFitSpec, BaggingFitSpec, RegularizationFitSpec are the only concrete subclasses of FitSpec."
             );
         }
-        FitSpec fitSpec = fitSpecBuilder
+        fitSpecBuilder
             .tauM(
                 hardCodeTauMCheck.isSelected() ?
                     tauMTextField.getValue() :
                     Optional.empty()
-             )
-            .fitTauM(fitTauMCheck.isSelected())
-            .tauFraction(
-                fitTauMCheck.isSelected() ?
-                    tauMFractionTextField.getValue().get() :
-                    0.0
-            )
-            .t2Limit(
-                fitTauMCheck.isSelected() ?
-                    r2LimitTextField.getValue().get() :
-                    0.0
             )
             .bootstrapMode(bootstrapMethodChoice.getValue())
-            .nReplicates(bootstrapReplicateTextField.getValue().get())
-            .build();
-        fitModel.setFitSpec(fitSpec);
+            .nReplicates(bootstrapReplicateTextField.getValue().get());
 
+        if (fitTauMCheck.isSelected()) {
+            fitSpecBuilder
+                .fitTauM(true)
+                .tauMFraction(tauMFractionTextField.getValue().get())
+                .r2Limit(r2LimitTextField.getValue().get());
+        } else {
+            fitSpecBuilder.fitTauM(false);
+        }
+        FitSpec fitSpec = fitSpecBuilder.build();
+
+        fitModel.setFitSpec(fitSpec);
         try {
             fitModel.updaters(this::updateFitProgress, this::updateStatus);
             fitModel.fitResidues();
@@ -2920,13 +2928,12 @@ public class PyController implements Initializable {
         simControls.simSliderAction("");
     }
 
-
-    List<String> getActiveModelNames() {
+    List<String> getActiveModelNames(String prefix) {
         List<String> modelNames = new ArrayList<>();
         for (Node child : modelCheckBoxGrid.getChildren()) {
             CheckBox checkBox = (CheckBox) child;
             if (!checkBox.isDisabled() && checkBox.isSelected()) {
-                modelNames.add(checkBox.getText());
+                modelNames.add(String.format("%s%s", prefix, checkBox.getText()));
             }
         }
         return modelNames;

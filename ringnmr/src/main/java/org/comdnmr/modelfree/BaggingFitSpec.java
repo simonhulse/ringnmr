@@ -8,8 +8,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.comdnmr.modelfree.models.MFModelIso;
 import org.comdnmr.modelfree.models.MFModelIso2sf;
 
-import org.nmrfx.chemistry.MoleculeBase;
-import org.nmrfx.chemistry.MoleculeFactory;
 import org.nmrfx.chemistry.relax.OrderPar;
 import org.nmrfx.chemistry.relax.OrderParSet;
 
@@ -26,7 +24,8 @@ public class BaggingFitSpec extends ModelSelectionFitSpec {
 
     BaggingFitSpec(Builder builder) { super(builder); }
 
-    public ModelFitResult fit(String key, MolDataValues data) {
+    @Override
+    public ModelFitResult fit(String key, MolDataValues data, Map<String, OrderParSet> orderParSetMap) {
         RelaxFit relaxFit = initRelaxFit(key, data);
 
         List<MFModelIso> models = getModels(data);
@@ -67,10 +66,7 @@ public class BaggingFitSpec extends ModelSelectionFitSpec {
             for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
         }
 
-        MoleculeBase moleculeBase = MoleculeFactory.getActive();
-        Map<String, OrderParSet> orderParSetMap = moleculeBase.orderParSetMap();
         orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
-
         // FIXME: not sure what Score should be for makeOrderParSet...
         OrderPar orderPar = makeOrderParSet(
             orderParSetMap.get(KEY),
@@ -82,13 +78,6 @@ public class BaggingFitSpec extends ModelSelectionFitSpec {
             weights
         );
 
-        ModelFitResult result = new ModelFitResult(
-            orderPar,
-            parameters,
-            null,
-            bestScores
-        );
-
-        return result;
+        return new ModelFitResult(orderPar, parameters, null);
     }
 }

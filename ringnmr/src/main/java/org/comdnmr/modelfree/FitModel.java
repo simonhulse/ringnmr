@@ -24,6 +24,9 @@ public abstract class FitModel implements BasicFitter {
         .modelNames(List.of("1", "1f", "1s", "2s", "2sf"))
         .build();
 
+    // >>>>>>>>>>>>>>>>>>>>>>>>
+    // TODO: transition to not needing these attributes. It is all contained
+    // within FitSpec
     Double tau;
     boolean fitTau = false;
     boolean fitJ = false;
@@ -37,6 +40,8 @@ public abstract class FitModel implements BasicFitter {
     boolean useLambda = false;
     double t2Limit = 0.0;
     int nReplicates = 0;
+    // <<<<<<<<<<<<<<<<<<<<<<<<
+
     private final FitResidues fitResidues = new FitResidues();
     final ReadOnlyObjectProperty<Worker.State> stateProperty = fitResidues.worker.stateProperty();
     private boolean isProcessing = false;

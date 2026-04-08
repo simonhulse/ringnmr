@@ -14,11 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FitDeuteriumModel extends FitModel {
-    Map<String, MolDataValues> molDataValuesMap = null;
+    Map<String, MolDataValues> molData = null;
     Random random = new Random();
 
-    public void setData(Map<String, MolDataValues> molDataValuesMap) {
-        this.molDataValuesMap = molDataValuesMap;
+    public void setData(Map<String, MolDataValues> molData) {
+        this.molData = molData;
     }
 
     public static Map<String, MolDataValues> getData(boolean requireCoords) {
@@ -130,19 +130,42 @@ public class FitDeuteriumModel extends FitModel {
     }
 
     public Map<String, ModelFitResult> testIsoModel() {
-        if ((molDataValuesMap == null) || (molDataValuesMap.isEmpty())) {
-            molDataValuesMap = getData(false);
+        if ((molData == null) || (molData.isEmpty())) {
+            molData = getData(false);
         }
-        if ((searchKey != null) && molDataValuesMap.containsKey(searchKey)) {
-            var keepVal = molDataValuesMap.get(searchKey);
-            molDataValuesMap.clear();
-            molDataValuesMap.put(searchKey, keepVal);
+        if ((searchKey != null) && molData.containsKey(searchKey)) {
+            var keepVal = molData.get(searchKey);
+            molData.clear();
+            molData.put(searchKey, keepVal);
         }
 
-        if (!molDataValuesMap.isEmpty()) {
-            return testModels(molDataValuesMap, modelNames);
+        if (!molData.isEmpty()) {
+            // FIXME: hard-coding value used previously.
+            // Is there a way to estimate this similarly with amide R1/R2/NOE?
+            if (fitSpec.tauMNeedsComputing) fitSpec.setTauM(10.0);
+
+            AtomicInteger counts = new AtomicInteger();
+            int n = molData.entrySet().size();
+            MoleculeBase moleculeBase = MoleculeFactory.getActive();
+            Map<String, OrderParSet> orderParSetMap = moleculeBase.orderParSetMap();
+
+            Map<String, ModelFitResult> results = new ConcurrentHashMap<>();
+            new ArrayList<>(molData.entrySet())
+                .parallelStream()
+                .forEach(
+                    residue -> {
+                        updateProgress((double) counts.get() / n);
+                        if (cancelled.get()) return;
+                        String key = residue.getKey();
+                        MolDataValues data = residue.getValue();
+                        if (!data.getData().isEmpty()) results.put(key, fitSpec.fit(key, data, orderParSetMap));
+                        counts.incrementAndGet();
+                    }
+
+                );
+            return results;
         } else {
-            throw new IllegalStateException("No relaxation data to analyze.  Need R1, R2, RAP");
+            throw new IllegalStateException("No relaxation data to analyze. Need R1, R2, RAP, and optionally RQ");
         }
     }
 
@@ -226,12 +249,7 @@ public class FitDeuteriumModel extends FitModel {
             OrderPar orderPar = makeOrderPar(orderParSet, resSource, bestScore, bestModel, bestModel.getParNames(), bestScore.getPars(), replicateData);
             atom.addOrderPar(orderParSet, orderPar);
             atom.addSpectralDensity(key, spectralDensity);
-            ModelFitResult modelFitResult = new ModelFitResult(
-                orderPar,
-                replicateData,
-                null,
-                new Score[]{bestScore});
-            result = Optional.of(modelFitResult);
+            result = Optional.of(new ModelFitResult(orderPar, replicateData, null));
         }
         return result;
     }
@@ -362,8 +380,7 @@ public class FitDeuteriumModel extends FitModel {
                 validationScore = scoreBayesian(molDataRes, bestModel, bestPars, dirichlet,
                         nReplicates, nReplicates, localFitTau, localTauFraction);
             }
-            ModelFitResult modelFitResult = new ModelFitResult(orderPar, replicateData, validationScore, bestScores);
-            result = Optional.of(modelFitResult);
+            result = Optional.of(new ModelFitResult(orderPar, replicateData, validationScore));
         }
         return result;
     }

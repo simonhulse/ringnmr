@@ -17,6 +17,10 @@ public class R1R2NOEDataValue extends RelaxDataValue {
         this.NOEerr = noeError;
     }
 
+    public double getNOE() { return NOE; }
+
+    public double getNOEerr() { return NOEerr; }
+
     public void randomize(MolDataValues molData, double r1, double r2,
                           double noe, Random random, double scale) {
         double newR1 = r1 + random.nextGaussian() * scale * R1err;
