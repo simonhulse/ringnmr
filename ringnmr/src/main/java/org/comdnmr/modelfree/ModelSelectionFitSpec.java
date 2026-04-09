@@ -43,6 +43,10 @@ public abstract class ModelSelectionFitSpec extends FitSpec {
         return modelNames;
     }
 
+    protected double[] getLower(MFModelIso model) { return model.getLower(); }
+
+    protected double[] processParamsAfterFit(MFModelIso model, double[] params) { return params; }
+
     public MFModelIso getModel(String name, MolDataValues data) {
         boolean fitTauM = fitTauM(data);
         return MFModelIso.buildModel(name, fitTauM, tauM, tauMFraction, fitExchange);
@@ -53,6 +57,10 @@ public abstract class ModelSelectionFitSpec extends FitSpec {
             .stream()
             .map(name -> getModel(name, data))
             .collect(Collectors.toList());
+    }
+
+    protected void appendSubclassState(StringBuilder sb) {
+        sb.append("modelNames=").append(modelNames.toString()).append('|');
     }
 
     @Override

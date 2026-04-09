@@ -97,13 +97,7 @@ public class MFModelIso1s extends MFModelIso {
     @Override
     public double[] getStandardPars(double[] pars) {
         pars(pars);
-        double[] stdPars = new double[5];
-        stdPars[0] = tauM;
-        stdPars[1] = 1.0;
-        stdPars[2] = 0.0;
-        stdPars[3] = ss2;
-        stdPars[4] = tauS;
-        return stdPars;
+        return createStandardPars(1.0, 0.0, ss2, tauS);
     }
 
     public double[] calc(double[] omegas, double s2, double tauS) {

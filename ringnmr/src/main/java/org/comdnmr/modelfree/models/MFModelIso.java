@@ -92,8 +92,26 @@ public abstract class MFModelIso extends MFModel {
 
     public abstract double[] getStart();
 
-    public abstract double[] getStandardPars(double[] pars);
+    protected double[] createStandardPars(double sf2, double tauf, double ss2, double taus) {
+        double[] pars;
+        int start;
+        if (fitTau) {
+            pars = new double[5];
+            pars[0] = tauM;
+            start = 1;
+        } else {
+            pars = new double[4];
+            start = 0;
+        }
+        pars[start] = sf2;
+        pars[start + 1] = tauf;
+        pars[start + 2] = ss2;
+        pars[start + 3] = taus;
 
+        return pars;
+    }
+
+    public abstract double[] getStandardPars(double[] pars);
 
     public static MFModelIso buildModel(String modelName, boolean fitTau,
                                         double tau, double tauFrac,

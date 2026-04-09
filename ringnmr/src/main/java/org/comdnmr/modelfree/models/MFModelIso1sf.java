@@ -135,7 +135,11 @@ public class MFModelIso1sf extends MFModelIso2f {
 
     @Override
     public double[] getStandardPars(double[] pars) {
-        return sortPars(pars);
+        double[] sortPars = sortPars(pars);
+        double tauF = sortPars[1];
+        double ss2 = sortPars[2];
+        double tauS = sortPars[3];
+        return createStandardPars(1.0, tauF, ss2, tauS);
     }
 
     @Override

@@ -135,6 +135,7 @@ public class FitR1R2NOEModel extends FitModel {
         if ((molData == null) || (molData.isEmpty())) {
             molData = getData(false);
         }
+
         if (searchKey != null) {
             if (molData.containsKey(searchKey)) {
                 var keepVal = molData.get(searchKey);
@@ -181,7 +182,6 @@ public class FitR1R2NOEModel extends FitModel {
         } else {
             throw new IllegalStateException("No relaxation data to analyze. Need R1, R2, and NOE");
         }
-
     }
 
     public Map<String, Double> estimateTau() {

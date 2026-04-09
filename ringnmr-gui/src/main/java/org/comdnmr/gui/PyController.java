@@ -221,10 +221,10 @@ public class PyController implements Initializable {
 
     // >>> Model-free entities >>>
     @FXML
-    ChoiceBox<String> modelAtoms;
+    ChoiceBox<MoietyType> modelAtoms;
 
     @FXML
-    GridPane modelSelectionGrid;
+    GridPane fittingMethodGrid;
     @FXML
     Label modelsLabel;
     @FXML
@@ -236,7 +236,7 @@ public class PyController implements Initializable {
     @FXML
     CheckBox model1sCheckBox;
     @FXML
-    CheckBox model1fsCheckBox;
+    CheckBox model1sfCheckBox;
     @FXML
     CheckBox model2sCheckBox;
     @FXML
@@ -570,18 +570,20 @@ public class PyController implements Initializable {
         barScaleSlider.valueProperty().addListener(e -> resizeBarPlotCanvas());
         barScaleScrollBar.valueProperty().addListener(e -> resizeBarPlotCanvas());
 
-        // >>> MODEL-FREE PANEL >>>
+        initializeModelFree();
+    }
+
+    private void initializeModelFree() {
         // Moeity type being considered in model-free fitting
-        modelAtoms.getItems().addAll("¹H-¹⁵N", "²H-¹³C");
-        modelAtoms.setValue("¹H-¹⁵N");
+        modelAtoms.getItems().addAll(FitSpec.MoietyType.values());
         modelAtoms
             .getSelectionModel()
             .selectedItemProperty()
             .addListener(
-                (ObservableValue<? extends String> obs, String oldValue, String newValue)
+                (ObservableValue<? extends FitSpec.MoietyType> obs, MoietyType oldValue, MoietyType newValue)
                     -> updateModelAtoms(newValue)
             );
-
+        modelAtoms.setValue(FitSpec.Builder.getDefaultMoietyType());
 
         // Model-free: fitting method (conventional, bagging, regularization)
         fitMethodChoice.getItems().addAll(FitSpec.getNames());
@@ -592,15 +594,22 @@ public class PyController implements Initializable {
         hardCodeTauMCheck.setOnAction(event -> updateTauMCheck());
         updateTauMCheck();
 
+        // Model-free: whether or not to fit TauM
         fitTauMCheck.setOnAction(event -> updateFitTauMCheck());
-        updateFitTauMCheck();
+        fitTauMCheck.setSelected(FitSpec.Builder.getDefaultFitTauM());
+        tauMFractionTextField.setText(Double.toString(FitSpec.Builder.getDefaultTauMFraction()));
+        r2LimitTextField.setText(Double.toString(FitSpec.Builder.getDefaultR2Limit()));
 
+        // Model-free: bootstrapping options
         bootstrapMethodChoice.getItems().addAll(FitSpec.BootstrapMode.values());
-        bootstrapMethodChoice.setValue(bootstrapMethodChoice.getItems().get(0));
+        bootstrapMethodChoice.setValue(FitSpec.Builder.getDefaultBootstrapMode());
+        bootstrapReplicateTextField.setText(Integer.toString(FitSpec.Builder.getDefaultNReplicates()));
 
-        // Set text to 100 initially in FXML. Need to call validateInput to
-        // ensure box doesn't start as red.
-        bootstrapReplicateTextField.validateInput();
+        // Set defaults for regularization lambdas
+        lambdaSsqTextField.setText(Double.toString(RegularizationFitSpec.Builder.getDefaultLambdaS()));
+        lambdaTauFTextField.setText(Double.toString(RegularizationFitSpec.Builder.getDefaultLambdaTauF()));
+        lambdaTauSTextField.setText(Double.toString(RegularizationFitSpec.Builder.getDefaultLambdaTauS()));
+    }
 
         // // Models to choose if conventional or bagging are being used
         // modelBox.add(new Label("Models"), 0, 0);
@@ -677,7 +686,6 @@ public class PyController implements Initializable {
         // bootStrapChoice.valueProperty().addListener(e -> bootStrapChanged(bootStrapChoice.getValue()));
         // lambdaCheckBox.selectedProperty().addListener(e -> lambdaChanged(lambdaCheckBox.isSelected()));
         // // <<< MODEL-FREE PANEL <<<
-    }
 
     public Stage getStage() {
         return stage;
@@ -1488,13 +1496,19 @@ public class PyController implements Initializable {
         alert.showAndWait();
     }
 
-    private void updateModelAtoms(String newValue) {
-        if (newValue.equals("¹H-¹⁵N")) {
-            model1sCheckBox.setText("1s");
-        } else if (newValue.equals("²H-¹³C")) {
-            model1sCheckBox.setText("1sf");
-        } else {
-            throw new AssertionError("Unsupported moiety");
+    private void updateModelAtoms(MoietyType newValue) {
+        // Remove/add 1sf model check box depending on whether amide/deute
+        switch (newValue) {
+            case AMIDE -> {
+                modelCheckBoxGrid.getChildren().remove(model1sfCheckBox);
+                modelCheckBoxGrid.setColumnIndex(model2sCheckBox, 3);
+                modelCheckBoxGrid.setColumnIndex(model2sfCheckBox, 4);
+            }
+            case DEUTERATED_METHYL -> {
+                modelCheckBoxGrid.getChildren().add(model1sfCheckBox);
+                modelCheckBoxGrid.setColumnIndex(model2sCheckBox, 4);
+                modelCheckBoxGrid.setColumnIndex(model2sfCheckBox, 5);
+            }
         }
     }
 
@@ -1507,10 +1521,10 @@ public class PyController implements Initializable {
         }
         FitModel fitModel;
         String modelPrefix;
-        if (modelAtoms.getValue().equals("¹H-¹⁵N")) {
+        if (modelAtoms.getValue().equals(MoietyType.AMIDE)) {
             fitModel = new FitR1R2NOEModel();
             modelPrefix = "";
-        } else if (modelAtoms.getValue().equals("²H-¹³C")) {
+        } else if (modelAtoms.getValue().equals(MoietyType.DEUTERATED_METHYL)) {
             // TODO: useRQCheckBox
             SpectralDensityCalculator.setUseRQ(true);
             fitModel = new FitDeuteriumModel();
@@ -2948,43 +2962,26 @@ public class PyController implements Initializable {
     }
 
     void fitMethodChanged(String methodName) {
+
+        System.out.printf("methodName: %s%n", methodName);
         Class<? extends FitSpec> fitSpecClass = FitSpec.getFitSpec(methodName);
-        if (
-            fitSpecClass == ConventionalFitSpec.class
-        ) {
-            for (Parent node : regularizationNodes()) {
-                if (modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().remove(node);
-                }
-            }
-            for (Parent node : modelSelectionNodes()) {
-                if (!modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().add(node);
-                }
-            }
+
+        List<Node> children = fittingMethodGrid.getChildren();
+        if (fitSpecClass == ConventionalFitSpec.class) {
+            if (!children.contains(modelsLabel)) children.add(modelsLabel);
+            if (!children.contains(modelCheckBoxGrid)) children.add(modelCheckBoxGrid);
+            if (children.contains(lambdaLabel)) children.remove(lambdaLabel);
+            if (children.contains(lambdasGrid)) children.remove(lambdasGrid);
         } else if (fitSpecClass == BaggingFitSpec.class) {
-            for (Parent node : regularizationNodes()) {
-                if (modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().remove(node);
-                }
-            }
-            for (Parent node : modelSelectionNodes()) {
-                if (modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().remove(node);
-                }
-            }
-        }
-        else if (fitSpecClass == RegularizationFitSpec.class) {
-            for (Parent node : modelSelectionNodes()) {
-                if (modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().remove(node);
-                }
-            }
-            for (Parent node : regularizationNodes()) {
-                if (!modelSelectionGrid.getChildren().contains(node)) {
-                    modelSelectionGrid.getChildren().add(node);
-                }
-            }
+            if (children.contains(modelsLabel)) children.remove(modelsLabel);
+            if (children.contains(modelCheckBoxGrid)) children.remove(modelCheckBoxGrid);
+            if (children.contains(lambdaLabel)) children.remove(lambdaLabel);
+            if (children.contains(lambdasGrid)) children.remove(lambdasGrid);
+        } else if (fitSpecClass == RegularizationFitSpec.class) {
+            if (children.contains(modelsLabel)) children.remove(modelsLabel);
+            if (children.contains(modelCheckBoxGrid)) children.remove(modelCheckBoxGrid);
+            if (!children.contains(lambdaLabel)) children.add(lambdaLabel);
+            if (!children.contains(lambdasGrid)) children.add(lambdasGrid);
         } else {
             throw new AssertionError("Unreachable");
         }
@@ -2999,13 +2996,12 @@ public class PyController implements Initializable {
     }
 
     void updateFitTauMCheck() {
-        boolean disable = !fitTauMCheck.isSelected();
+        boolean disabled = !fitTauMCheck.isSelected();
         for (Label label : new Label[]{tauMFractionLabel, r2LimitLabel}) {
-            setLabelColor(label, disable);
+            setLabelColor(label, disabled);
         }
         for (ValidatedDecimalTextField textField : new ValidatedDecimalTextField[]{tauMFractionTextField, r2LimitTextField}) {
-            textField.setDisable(disable);
-            if (disable) textField.setText("");
+            textField.setDisable(disabled);
             textField.validateInput();
         }
     }

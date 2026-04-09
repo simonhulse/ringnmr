@@ -1,5 +1,6 @@
 package org.comdnmr.modelfree;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,10 +32,11 @@ public class BaggingFitSpec extends ModelSelectionFitSpec {
         List<MFModelIso> models = getModels(data);
         MFModelIso2sf model2sf = (MFModelIso2sf) getModel("2sf", data);
 
-        int nParameters = 5;
+        // If tauM is being fit, this will be 5. If not, it will be 4
+        int nParameters = model2sf.getNPars();
         int nWeights = data.getNValues();
-        double[][] parameters = new double[nReplicates][nParameters];
-        double[][] weights = new double[nReplicates][nWeights];
+        double[][] parameters = new double[nParameters][nReplicates];
+        double[][] weights = new double[nWeights][nReplicates];
         BootstrapSampler sampler = getBootstrapSampler(data);
 
         Score[] bestScores = new Score[nReplicates];
@@ -62,20 +64,24 @@ public class BaggingFitSpec extends ModelSelectionFitSpec {
             bestScores[i] = bestScore;
             double[] replicateParameters = bestModel.getStandardPars(bestScore.getPars());
             double[] replicateWeights = replicateData.getWeights();
-            for (int k = 0; k < nParameters; k++) parameters[i][k] = replicateParameters[k];
-            for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
+            for (int k = 0; k < nParameters; k++) parameters[k][i] = replicateParameters[k];
+            for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
         }
 
+        Pair<double[], double[]> parameterEstimates = computeStatistics(parameters, weights);
+        double[] fitParameters = parameterEstimates.getLeft();
+        double[] fitErrors = parameterEstimates.getRight();
+
         orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
-        // FIXME: not sure what Score should be for makeOrderParSet...
         OrderPar orderPar = makeOrderParSet(
             orderParSetMap.get(KEY),
             sampler.getOriginalData(),
             key,
+            // FIXME: not sure what Score should be for makeOrderParSet...
             bestScores[0],
             model2sf,
-            parameters,
-            weights
+            fitParameters,
+            fitErrors
         );
 
         return new ModelFitResult(orderPar, parameters, null);

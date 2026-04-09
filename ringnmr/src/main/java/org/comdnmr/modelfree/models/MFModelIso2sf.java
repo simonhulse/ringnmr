@@ -126,37 +126,10 @@ public class MFModelIso2sf extends MFModelIso2s {
         this.tauS = pars[parStart + 3];
     }
 
-    public double[] sortPars(double[] pars) {
-        pars(pars);
-        double[] sortPars = new double[5];
-        sortPars[0] = tauM;
-        double tauLimit = 7.0e-3;
-        boolean swapIt = false;
-        if ((tauS < tauLimit) && (tauF < tauLimit)) {
-            if (ss2 < sf2) {
-                swapIt = true;
-            }
-        } else if (tauF > tauS) {
-            swapIt = true;
-        }
-
-        if (swapIt) {
-            sortPars[1] = ss2;
-            sortPars[2] = tauS;
-            sortPars[3] = sf2;
-            sortPars[4] = tauF;
-        } else {
-            sortPars[1] = sf2;
-            sortPars[2] = tauF;
-            sortPars[3] = ss2;
-            sortPars[4] = tauS;
-        }
-        return sortPars;
-    }
-
     @Override
     public double[] getStandardPars(double[] pars) {
-        return sortPars(pars);
+        pars(pars);
+        return createStandardPars(sf2, tauF, ss2, tauS);
     }
 
     @Override

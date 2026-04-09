@@ -39,21 +39,20 @@ public class ConventionalFitSpec extends ModelSelectionFitSpec {
         int nWeights = data.getNValues();
         for (MFModelIso model : models) {
             data.setTestModel(model);
+            int nParameters = model.getNPars();
 
             // Perform bootstrapping to estimate parameter errors
-            int nParameters = model.getNPars();
-            double[][] parameters = new double[nReplicates][nParameters];
-            double[][] weights = new double[nReplicates][nWeights];
+            double[][] parameters = new double[nParameters][nReplicates];
+            double[][] weights = new double[nWeights][nReplicates];
             BootstrapSampler sampler = getBootstrapSampler(data);
-
             for (int i = 0; i < nReplicates; i++) {
                 MolDataValues replicateData = sampler.sample();
                 relaxFit.setRelaxData(key, replicateData);
                 Score replicateScore = runFit(relaxFit, model);
                 double[] replicateParameters = replicateScore.getPars();
                 double[] replicateWeights = replicateData.getWeights();
-                for (int k = 0; k < nParameters; k++) parameters[i][k] = replicateParameters[k];
-                for (int j = 0; j < nWeights; j++) weights[i][j] = replicateWeights[j];
+                for (int k = 0; k < nParameters; k++) parameters[k][i] = replicateParameters[k];
+                for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
             }
 
             // Determine the optimal model using the AICc
@@ -61,16 +60,19 @@ public class ConventionalFitSpec extends ModelSelectionFitSpec {
             relaxFit.setRelaxData(key, data);
             Score score = runFit(relaxFit, model);
 
+            double[] fitParameters = score.pars;
+            double[] fitErrors = computeStatistics(parameters, weights).getRight();
+
             String resultKey = makeKey(model.getName());
-            orderParSetMap.computeIfAbsent(resultKey, k -> new OrderParSet(k));
+            orderParSetMap.computeIfAbsent(resultKey, ky -> new OrderParSet(ky));
             OrderPar orderPar = makeOrderParSet(
                 orderParSetMap.get(resultKey),
                 sampler.getOriginalData(),
                 key,
                 score,
                 model,
-                parameters,
-                weights
+                fitParameters,
+                fitErrors
             );
 
             if (best.isEmpty() || score.aicc().get() < best.get().getLeft().aicc().get()) {
