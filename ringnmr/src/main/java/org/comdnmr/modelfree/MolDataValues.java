@@ -10,6 +10,7 @@ import org.comdnmr.modelfree.models.MFModel;
 import org.nmrfx.chemistry.Atom;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,17 +18,17 @@ import java.util.Optional;
  *
  * @author brucejohnson
  */
-public class MolDataValues {
+public abstract class MolDataValues<T extends RelaxDataValue> {
 
     Atom atom;
     final String specifier;
     final double[] vector = new double[3];
-    final List<RelaxDataValue> dataValues = new ArrayList<>();
-    MFModel model;
-    double[][] jValues = null;
-    Integer bootstrapSet = null;
-    BootstrapAggregator bootstrapAggregator = null;
-    double[] weights = null;
+    final List<T> dataValues = new ArrayList<>();
+    private MFModel model;
+    private double[][] jValues = null;
+    private Integer bootstrapSet = null;
+    private BootstrapAggregator bootstrapAggregator = null;
+    private double[] weights = null;
 
     public MolDataValues(String specifier, double[] vector, DynamicsSource dynSourceFactory) {
         this.specifier = specifier;
@@ -50,6 +51,11 @@ public class MolDataValues {
     public Atom getAtom() {
         return atom;
     }
+
+    public String getSpecifier() {
+        return specifier;
+    }
+
     @Override
     public String toString() {
         StringBuilder sBuilder = new StringBuilder();
@@ -64,8 +70,14 @@ public class MolDataValues {
         return SpectralDensityCalculator.getNData(dataValues);
     }
 
-    public void weight(double[] weights) {
+    public void setWeights(double[] weights) {
         this.weights = weights;
+    }
+
+    /** @deprecated Use {@link #setWeights(double[])} instead. */
+    @Deprecated
+    public void weight(double[] weights) {
+        setWeights(weights);
     }
 
     public double[] getWeights() {
@@ -73,20 +85,18 @@ public class MolDataValues {
         if (this.weights == null) {
             int nWeights = getNValues();
             weights = new double[nWeights];
-            for (int j = 0; j < nWeights; j++) {
-                weights[j] = 1.0;
-            }
+            Arrays.fill(weights, 1.0);
         } else {
             weights = this.weights;
         }
         return weights;
     }
 
-    public void addData(RelaxDataValue value) {
+    public void addData(T value) {
         dataValues.add(value);
     }
 
-    public List<RelaxDataValue> getData() {
+    public List<T> getData() {
         return dataValues;
     }
 
@@ -120,45 +130,18 @@ public class MolDataValues {
         jValues = null;
     }
 
-    public double[][] calcJ() {
-        var dataOpt = dataValues.stream().findFirst();
-        if (dataOpt.isPresent()) {
-            if (dataOpt.get() instanceof DeuteriumDataValue) {
-                return SpectralDensityCalculator.calcJDeuterium(dataValues);
-            } else {
-                return SpectralDensityCalculator.calcJR1R2NOE(dataValues);
-            }
-        }
-        return new double[0][0];
+    public void clearJValues() {
+        jValues = null;
     }
 
-    public List<double[][]> calcIndependentJ() {
-        var dataOpt = dataValues.stream().findFirst();
-        List<double[][]> result = new ArrayList<>();
-        if (dataOpt.isPresent()) {
-            if (dataOpt.get() instanceof DeuteriumDataValue) {
-                for (RelaxDataValue relaxDataValue : dataValues) {
-                    double[][] jValues = SpectralDensityCalculator.calcJDeuterium(List.of(relaxDataValue));
-                    result.add(jValues);
-                }
-            } else {
-                for (RelaxDataValue relaxDataValue : dataValues) {
-                    double[][] jValues = SpectralDensityCalculator.calcJR1R2NOE(List.of(relaxDataValue));
-                    result.add(jValues);
-                }
-                result.add(jValues);
-            }
-        }
-        return result;
-    }
+    public abstract double[][] calcJ();
+
+    public abstract List<double[][]> calcIndependentJ();
+
+    public abstract MolDataValues<T> createEmpty();
 
     public void setJValues(double[][] jValuesSet) {
-        jValues = new double[jValuesSet.length][jValuesSet[0].length];
-        for (int i=0;i<jValuesSet.length;i++) {
-            for (int j=0;j<jValuesSet[i].length;j++) {
-                jValues[i][j] = jValuesSet[i][j];
-            }
-        }
+        jValues = Arrays.stream(jValuesSet).map(double[]::clone).toArray(double[][]::new);
     }
 
     public double[][] getJValues() {
@@ -170,9 +153,8 @@ public class MolDataValues {
             }
         }
         if (weights != null) {
-            System.arraycopy(weights, 0, jValues[jValues.length -1], 0, weights.length);
+            System.arraycopy(weights, 0, jValues[jValues.length - 1], 0, weights.length);
         }
         return jValues;
-
     }
 }

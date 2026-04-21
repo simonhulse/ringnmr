@@ -133,8 +133,9 @@ public class RelaxFit {
         return new double[]{0.75 * isoD, isoD, 1.25 * isoD};
     }
 
-    public void setRelaxData(Map<String, MolDataValues> molDataValues) {
-        this.molDataValues = molDataValues;
+    @SuppressWarnings("unchecked")
+    public void setRelaxData(Map<String, ? extends MolDataValues> molDataValues) {
+        this.molDataValues = (Map<String, MolDataValues>) molDataValues;
     }
     public void setRelaxData(String key, MolDataValues data) {
         Map<String, MolDataValues> map = new HashMap<>() {{ put(key, data); }};
@@ -424,7 +425,7 @@ public class RelaxFit {
         return new double[]{sumSq, complexityS, complexityTauF, complexityTauS, jCalc.length};
     }
 
-    double[] calcDeltaSqR(MolDataValues molData, double[] resPars, MFModel testModel) {
+    double[] calcDeltaSqR(MolDataValues<?> molData, double[] resPars, MFModel testModel) {
         double sumComplexityS = 0.0;
         double sumComplexityTauF = 0.0;
         double sumComplexityTauS = 0.0;
@@ -508,12 +509,13 @@ public class RelaxFit {
         return score;
     }
 
+    @SuppressWarnings("unchecked")
     public Map<String, MolDataValues> genBootstrap(Random random, MFModel model, double[] pars) {
         var newMolDataValues = new HashMap<String, MolDataValues>();
 
         for (var entry : molDataValues.entrySet()) {
             MolDataValues molData = entry.getValue();
-            MolDataValues newMolData = new MolDataValues(molData.atom, molData.vector);
+            MolDataValues newMolData = molData.createEmpty();
             newMolData.setTestModel(model);
             newMolDataValues.put(entry.getKey(), newMolData);
             MFModel testModel = newMolData.getTestModel();
@@ -529,17 +531,17 @@ public class RelaxFit {
 
             for (var value : molData.getData()) {
                 if (value instanceof R1R2NOEDataValue dValue) {
-                    randomize(random, testModel, newMolData, dValue,resPars);
+                    randomize(random, testModel, (MolDataValues<R1R2NOEDataValue>) newMolData, dValue, resPars);
                 } else {
                     var dValue = (DeuteriumDataValue) value;
-                    randomize(random, testModel, newMolData, dValue,resPars);
+                    randomize(random, testModel, (MolDataValues<DeuteriumDataValue>) newMolData, dValue, resPars);
                 }
             }
         }
         return newMolDataValues;
     }
 
-    private void randomize(Random random, MFModel testModel, MolDataValues newMolData, R1R2NOEDataValue dValue, double[] resPars) {
+    private void randomize(Random random, MFModel testModel, MolDataValues<R1R2NOEDataValue> newMolData, R1R2NOEDataValue dValue, double[] resPars) {
         RelaxEquations relaxObj = dValue.relaxObj;
         double[] valJ = testModel.calc(relaxObj.wValues, resPars);
         double r1 = relaxObj.R1(valJ);
@@ -549,7 +551,7 @@ public class RelaxFit {
         dValue.randomize(newMolData, r1, r2, noe, random, 1.0);
     }
 
-    private void randomize(Random random, MFModel testModel, MolDataValues newMolData, DeuteriumDataValue dValue, double[] resPars) {
+    private void randomize(Random random, MFModel testModel, MolDataValues<DeuteriumDataValue> newMolData, DeuteriumDataValue dValue, double[] resPars) {
         RelaxEquations relaxObj = dValue.relaxObj;
         double[] J = testModel.calc(relaxObj.wValues, resPars);
         double r1 = relaxObj.R1_D(J);
@@ -578,8 +580,8 @@ public class RelaxFit {
             System.arraycopy(pars, parStart, resPars, 1, nResPars);
             parStart += nResPars;
 
-            for (RelaxDataValue value : molData.getData()) {
-                var dValue = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                var dValue = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
                 double[] valJ = testModel.calc(relaxObj.wValues, resPars);
                 double r1 = relaxObj.R1(valJ);
@@ -617,10 +619,10 @@ public class RelaxFit {
         int n = 0;
         for (MolDataValues molData : molDataValues.values()) {
             MFModel model = molData.getTestModel();
-            for (RelaxDataValue value : molData.getData()) {
-                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
-                double[] v = molData.vector;
+                double[] v = molData.getVector();
                 int nModelPars = model.getNPars();
                 double[] resPars = new double[nModelPars + nDiffPars];
                 System.arraycopy(pars, 0, resPars, 0, nDiffPars);
@@ -655,17 +657,17 @@ public class RelaxFit {
         int modelNum = 1;
         int nDiffPars = diffusionType.getNDiffusionPars() + diffusionType.getNAnglePars();
         for (MolDataValues molData : molDataValues.values()) {
-            for (RelaxDataValue value : molData.getData()) {
-                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
-                double[] v = molData.vector;
+                double[] v = molData.getVector();
                 double[] resPars = new double[nParsPerModel[modelNum] + nDiffPars];
                 System.arraycopy(pars, 0, resPars, 0, nDiffPars);
                 resPars[resPars.length - 1] = 1.0; //Model 0: S2 = 1.0, all others null.
                 double[] valJ = getJDiffusion(resPars, relaxObj, modelNum, v, valD, valVT);
                 double rhoExp = dValue.calcExpRho(valJ);
                 double rhoPred = dValue.calcPredRho(valJ);
-                System.out.println(rhoExp + " " + rhoPred + " " + (rhoExp - rhoPred) + " " + molData.specifier);
+                System.out.println(rhoExp + " " + rhoPred + " " + (rhoExp - rhoPred) + " " + molData.getSpecifier());
             }
         }
     }

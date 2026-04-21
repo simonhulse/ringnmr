@@ -1,0 +1,3 @@
+The R₂ limit imposes a threshold to decide whether τm should be fit or fixed for a each residue. If all R₂ values associated with a residue are below the R₂ limit, τm will be fixed. If at least one R₂ value is above the limit, τm will be fit. By default (0.0), τm will be fit for all residues.
+
+Must be a positive number.

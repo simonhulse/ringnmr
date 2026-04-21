@@ -30,6 +30,9 @@ import java.util.List;
  * @author brucejohnson
  */
 public abstract class MFModelIso extends MFModel {
+
+    private static final String[] MODEL_NAMES = {"1", "1f", "1s", "2s", "2sf", "1sf"};
+
     double sN = 1.0;
     double tauM;
     double rEX;
@@ -52,6 +55,10 @@ public abstract class MFModelIso extends MFModel {
 
     public MFModelIso() {
         this(true, 0.0, 0.0, false);
+    }
+
+    public static String[] getAllModelNames() {
+        return MODEL_NAMES;
     }
 
     public List<String> getAllParNames(String... pars) {

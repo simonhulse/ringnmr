@@ -15,7 +15,9 @@ interface InputValidator<T> {
 
 abstract class ValidatedTextField<T> extends TextField {
 
-    private static final String INVALID_BORDER_COLOR = "red";
+    private static final int DEFAULT_WIDTH = 60;
+    private static final String VALID_STYLE = "";
+    private static final String INVALID_STYLE = "-fx-text-box-border: red; -fx-focus-color: red; -fx-faint-focus-color: transparent;";
 
     private ValidationStrategy<T> validator;
 
@@ -25,7 +27,14 @@ abstract class ValidatedTextField<T> extends TextField {
 
     public ValidatedTextField(ValidationStrategy<T> validator, String value) {
         this.validator = validator;
+        setPrefWidth(DEFAULT_WIDTH);
+        setMaxWidth(DEFAULT_WIDTH);
+        setText(value);
+        validateInput();
+        bindListener();
+    }
 
+    private void bindListener() {
         textProperty().addListener(
             new ChangeListener<String>() {
                 @Override
@@ -34,15 +43,14 @@ abstract class ValidatedTextField<T> extends TextField {
                 }
             }
         );
-        setText(value);
     }
 
     public void validateInput() {
         boolean valid = getValue().isPresent();
-        if (valid || isDisabled()) {
-            setStyle("");
+        if (valid) {
+            setStyle(VALID_STYLE);
         } else {
-            setStyle(String.format("-fx-border-color: %s;", INVALID_BORDER_COLOR));
+            setStyle(INVALID_STYLE);
         }
     }
 

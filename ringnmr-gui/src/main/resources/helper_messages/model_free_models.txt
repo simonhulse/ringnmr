@@ -1,0 +1,18 @@
+Model 2sf:
+Extended model-free formalism of Clore et. al., featuring 2 distinct local motions: fast (τf < 150ps) and slow (τs >= 150ps).
+
+Model 2s:
+Truncated form of model 2sf, with τf = 0s.
+
+Model 1f:
+Lipari-Szabo model-free formalism, with a single fast local motion (τf < 150ps).
+
+Model 1s:
+Lipari-Szabo model-free formalism, with a single slow local motion (τs >= 150ps).
+
+Model 1:
+Truncated form of model 1f, with τf = 0s.
+
+Model 1sf:
+Applicable to deuterated methyl fitting only.
+Model 2sf with S²f set to 1 (it is scaled by 1/9 in the equation).

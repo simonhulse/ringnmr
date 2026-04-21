@@ -35,7 +35,7 @@ public class FitR1R2NOEModelTest {
         return model;
     }
 
-    R1R2NOEDataValue makeDataValue(MFModelIso model, RelaxEquations rlxEq, double[] pars, MolDataValues resData) {
+    R1R2NOEDataValue makeDataValue(MFModelIso model, RelaxEquations rlxEq, double[] pars, MolDataValues<R1R2NOEDataValue> resData) {
         double[] valJ = model.calc(rlxEq.wValues, pars);
         double r1 = rlxEq.R1(valJ);
         double r1Error = r1 * 0.03;
@@ -46,11 +46,11 @@ public class FitR1R2NOEModelTest {
         return new R1R2NOEDataValue(resData, r1, r1Error, r2, r2Error, noe, noeError, rlxEq);
     }
 
-    public Map<String, MolDataValues> getMolDataValues() {
+    public Map<String, MolDataValues<R1R2NOEDataValue>> getMolDataValues() {
         DynamicsSource dynamicsSourceFactory = new DynamicsSource(true, true, true, true);
         double[] v = {0.0, 1.0, 2.0};
-        Map<String, MolDataValues> molDataRes = new HashMap<>();
-        MolDataValues resData = new MolDataValues("3.CB", v, dynamicsSourceFactory);
+        Map<String, MolDataValues<R1R2NOEDataValue>> molDataRes = new HashMap<>();
+        MolDataValues<R1R2NOEDataValue> resData = new R1R2NOEMolDataValues("3.CB", v, dynamicsSourceFactory);
         molDataRes.put("a", resData);
         return molDataRes;
     }
@@ -58,9 +58,9 @@ public class FitR1R2NOEModelTest {
     public PointValuePair fitModel(RelaxFit relaxFit, String modelName, double tau, double[] pars, double[] sfs) {
         MFModelIso model = makeModel(modelName, tau);
 
-        Map<String, MolDataValues> molDataRes = getMolDataValues();
+        Map<String, MolDataValues<R1R2NOEDataValue>> molDataRes = getMolDataValues();
         relaxFit.setRelaxData(molDataRes);
-        MolDataValues resData = molDataRes.get("a");
+        MolDataValues<R1R2NOEDataValue> resData = molDataRes.get("a");
 
         for (double sf : sfs) {
             RelaxEquations rlxEq = RelaxEquations.getRelaxEquations(sf, "H", "N");
@@ -146,8 +146,8 @@ public class FitR1R2NOEModelTest {
         double tau = 100.0;
         double[] pars = {0.3, 0.0, 0.3, 0.2};
         double sf = 500.0e6;
-        Map<String, MolDataValues> molDataRes = getMolDataValues();
-        MolDataValues resData = molDataRes.get("a");
+        Map<String, MolDataValues<R1R2NOEDataValue>> molDataRes = getMolDataValues();
+        MolDataValues<R1R2NOEDataValue> resData = molDataRes.get("a");
 
         MFModelIso model = makeModel(modelName, tau);
         RelaxEquations rlxEq = RelaxEquations.getRelaxEquations(sf, "H", "N");

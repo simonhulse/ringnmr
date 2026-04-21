@@ -2,7 +2,12 @@ package org.comdnmr.gui;
 
 public class ValidatedIntegerTextField extends ValidatedTextField<Integer> {
 
+
     public ValidatedIntegerTextField() {
-        super(new PositiveIntegerValidationStrategy());
+        this("");
+    }
+
+    public ValidatedIntegerTextField(String initialValue) {
+        super(new PositiveIntegerValidationStrategy(), initialValue);
     }
 }

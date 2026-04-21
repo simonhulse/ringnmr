@@ -1,0 +1,1 @@
+Select this if you would like to explicitly specify the global tumbling time. If this is not selected, τm is estimated based on the R₁ and R₂ values of the residues.

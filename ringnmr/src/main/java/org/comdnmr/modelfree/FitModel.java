@@ -4,18 +4,21 @@ import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
-import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.rng.UniformRandomProvider;
-import org.apache.commons.rng.sampling.distribution.DirichletSampler;
 import org.apache.commons.rng.simple.RandomSource;
 import org.comdnmr.BasicFitter;
 import org.comdnmr.eqnfit.ParValueInterface;
-import org.comdnmr.modelfree.models.MFModelIso;
 import org.comdnmr.util.ProcessingStatus;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import org.nmrfx.chemistry.MoleculeBase;
+import org.nmrfx.chemistry.MoleculeFactory;
+import org.nmrfx.chemistry.relax.OrderParSet;
 
 public abstract class FitModel implements BasicFitter {
     public static UniformRandomProvider rng = null;
@@ -23,6 +26,8 @@ public abstract class FitModel implements BasicFitter {
     protected FitSpec fitSpec = new ConventionalFitSpec.Builder()
         .modelNames(List.of("1", "1f", "1s", "2s", "2sf"))
         .build();
+
+    protected StructureValues molData = null;
 
     // >>>>>>>>>>>>>>>>>>>>>>>>
     // TODO: transition to not needing these attributes. It is all contained
@@ -48,6 +53,7 @@ public abstract class FitModel implements BasicFitter {
     List<String> modelNames = new ArrayList<>();
     String searchKey = null;
     AtomicBoolean cancelled = new AtomicBoolean(false);
+    int lastFitCount = 0;
     boolean useMedian = false;
     boolean calcValidation = false;
 
@@ -71,6 +77,27 @@ public abstract class FitModel implements BasicFitter {
     }
 
     public void setFitSpec(FitSpec fitSpec) { this.fitSpec = fitSpec; }
+
+    public void setData(StructureValues molData) { this.molData = molData; }
+
+    /**
+     * Loads relaxation data from the active molecule. Called when {@link #molData}
+     * is null or empty at the start of {@link #testIsoModel()}.
+     */
+    protected abstract StructureValues loadData();
+
+    /**
+     * Sets the overall tumbling correlation time on {@link #fitSpec} when it has
+     * not yet been computed, using the estimate provided by {@link #molData}.
+     */
+    protected void setTauMFromData() {
+        fitSpec.setTauM(molData.estimateTau().get("tau"));
+    }
+
+    /**
+     * Returns the error message thrown when no relaxation data are available.
+     */
+    protected abstract String getNoDataMessage();
 
     @Override
     public List<ParValueInterface> guessPars(String eqn) {
@@ -109,38 +136,6 @@ public abstract class FitModel implements BasicFitter {
 
     }
 
-    public double scoreBayesian(Map<String, MolDataValues> molDataRes, MFModelIso model, double[] pars,
-                                DirichletSampler dirichlet, int iStart, int nReplicates,
-                                boolean localFitTau, double localTauFraction) {
-        double rssSum = 0.0;
-        int startPar = localFitTau ? 0 : 1;
-        double[] pars2 = new double[pars.length - startPar];
-
-        System.arraycopy(pars, startPar, pars2, 0, pars2.length);
-        for (int iRep = 0; iRep < nReplicates; iRep++) {
-            double[] weights = dirichlet.sample();
-            scaleWeights(weights);
-            for (var molData : molDataRes.values()) {
-                molData.weight(weights);
-            }
-            model.setTauFraction(localTauFraction);
-            rssSum += scoreModel(molDataRes, pars2);
-        }
-        return rssSum / nReplicates;
-    }
-
-     double scoreModel(Map<String, MolDataValues> molDataRes, double[] pars) {
-        RelaxFit relaxFit = new RelaxFit();
-        relaxFit.setRelaxData(molDataRes);
-        relaxFit.setLambdaS(lambdaS);
-        relaxFit.setLambdaTauF(lambdaTauF);
-        relaxFit.setLambdaTauS(lambdaTauS);
-        relaxFit.setUseLambda(useLambda);
-        relaxFit.setFitJ(fitJ);
-        var score = relaxFit.score(pars, true);
-        return score.rss;
-    }
-
     int bestScore(List<Score> scores) {
         double lowestAIC = Double.MAX_VALUE;
         int iBest = -1;
@@ -160,42 +155,38 @@ public abstract class FitModel implements BasicFitter {
         this.statusFunction = statusFunction;
     }
 
-    public abstract Map<String, ModelFitResult> testIsoModel();
-
-    double[][] replicates(Map<String, MolDataValues> molDataRes,
-                          MFModelIso bestModel, double localTauFraction,
-                          boolean localFitTau, double[] pars, Random random) {
-        double[][] repData = new double[pars.length][nReplicates];
-        for (int iRep = 0; iRep < nReplicates; iRep++) {
-            Score score2 = fitReplicate(molDataRes, bestModel, localTauFraction, localFitTau, pars, random);
-            double[] repPars = score2.getPars();
-            for (int iPar = 0; iPar < pars.length; iPar++) {
-                repData[iPar][iRep] = repPars[iPar];
-            }
+    public Map<String, ModelFitResult> testIsoModel() {
+        if ((molData == null) || (molData.isEmpty())) {
+            molData = loadData();
         }
-        return repData;
-    }
-
-    Score fitReplicate(Map<String, MolDataValues> molDataRes, MFModelIso model,
-                       double localTauFraction, boolean localFitTau, double[] pars, Random random) {
-        RelaxFit relaxFit = new RelaxFit();
-        relaxFit.setRelaxData(molDataRes);
-        relaxFit.setLambdaS(lambdaS);
-        relaxFit.setLambdaTauF(lambdaTauF);
-        relaxFit.setLambdaTauS(lambdaTauS);
-        relaxFit.setUseLambda(useLambda);
-        relaxFit.setFitJ(fitJ);
-        Map<String, MolDataValues> molDataMap = relaxFit.genBootstrap(random, model, pars);
-        relaxFit.setRelaxData(molDataMap);
-
-        model.setTauFraction(localTauFraction);
-        double[] lower = model.getLower();
-        double[] upper = model.getUpper();
-        Optional<PointValuePair> fitResultOpt = relaxFit.fitResidueToModel(pars, lower, upper);
-        if (fitResultOpt.isPresent()) {
-            return relaxFit.score(fitResultOpt.get().getPoint(), true);
+        if ((searchKey != null) && molData.containsKey(searchKey)) {
+            var keepVal = molData.get(searchKey);
+            molData.clear();
+            molData.put(searchKey, keepVal);
         }
-        return null;
+        if (!molData.isEmpty()) {
+            if (fitSpec.tauMNeedsComputing()) setTauMFromData();
+            AtomicInteger counts = new AtomicInteger();
+            int n = molData.size();
+            MoleculeBase moleculeBase = MoleculeFactory.getActive();
+            Map<String, OrderParSet> orderParSetMap = new ConcurrentHashMap<>();
+            orderParSetMap.putAll(moleculeBase.orderParSetMap());
+            Map<String, ModelFitResult> results = new ConcurrentHashMap<>();
+            new ArrayList<>(molData.entrySet())
+                .parallelStream()
+                .forEach(residue -> {
+                    updateProgress((double) counts.get() / n);
+                    if (cancelled.get()) return;
+                    String key = residue.getKey();
+                    MolDataValues<? extends RelaxDataValue> data = residue.getValue();
+                    if (!data.getData().isEmpty()) results.put(key, fitSpec.fit(key, data, orderParSetMap));
+                    counts.incrementAndGet();
+                });
+            moleculeBase.orderParSetMap().putAll(orderParSetMap);
+            return results;
+        } else {
+            throw new IllegalStateException(getNoDataMessage());
+        }
     }
 
     public void setUseMedian(boolean value) {
@@ -262,7 +253,7 @@ public abstract class FitModel implements BasicFitter {
         tauFraction = value;
     }
 
-    public boolean fitTau(Map<String, MolDataValues> molDataRes) {
+    public boolean fitTau(Map<String, MolDataValues<? extends RelaxDataValue>> molDataRes) {
         boolean localFitTau;
 
         if (overT2Limit(molDataRes, t2Limit)) {
@@ -273,7 +264,7 @@ public abstract class FitModel implements BasicFitter {
         return localFitTau;
     }
 
-    boolean overT2Limit(Map<String, MolDataValues> molDataRes, double limit) {
+    boolean overT2Limit(Map<String, MolDataValues<? extends RelaxDataValue>> molDataRes, double limit) {
         return limit < 1.0e-6 || molDataRes.values().stream().anyMatch(v -> v.getData().stream().anyMatch(d -> d.R2 > limit));
     }
 
@@ -369,19 +360,13 @@ public abstract class FitModel implements BasicFitter {
     }
 
     void finishProcessing() {
-        updateStatus("Done");
-        try {
-        } catch (IllegalArgumentException iAE) {
-        }
+        updateStatus("Done: fit " + lastFitCount + " residues");
     }
 
     public void fitAll(Task task) {
-        testIsoModel();
-        int nFit = 0;
-        int nGroups = 1;
-        nFit++;
+        lastFitCount = testIsoModel().size();
         if (task != null) {
-            updateProgress((1.0 * nFit) / nGroups);
+            updateProgress(1.0);
         }
     }
 }

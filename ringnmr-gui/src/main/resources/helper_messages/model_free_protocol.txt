@@ -1,0 +1,8 @@
+Conventional:
+Every model chosen (via the checkboxes) is individually fit to the original spectral density data. The model whose fit has the smallest sampled-biased AIC (AICc) is chosen as the "optimal" model, and it's parameters are assigned as the fit result. Error statistics are then determined by fitting the optimal model to a series of sampled datasets via bootstrapping.
+
+Bagging (Bootstrap aggregating):
+A series of bootstrap datasets are sampled from the original data. For each dataset, all valid models are fit, and the optimal fit is determined using the AICc. The parameters are stored as if they were derived from the most complex (2sf) model, with local parameters which don't feature assigned their null values (S²f, S²s = 1), (τf, τs = 0s). Parameter estimates are derived from these results.
+
+Regularization:
+The most complex model (2sf) is fit to a series of bootstrap datasets. The cost function includes terms which penalize the optimizer when the local parameters are not at their null values. This aims to bias for more simple models when certain local parameters are not necessary for a good quality fit. Parameter estimates are derived in the same way as bagging.

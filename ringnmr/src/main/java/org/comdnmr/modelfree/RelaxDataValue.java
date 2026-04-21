@@ -9,9 +9,9 @@ package org.comdnmr.modelfree;
  *
  * @author brucejohnson
  */
-public class RelaxDataValue  {
+public abstract class RelaxDataValue  {
 
-    final MolDataValues molDataValue;
+    final MolDataValues<?> molDataValue;
     double R1;
     double R1err;
     double R2;
@@ -30,7 +30,7 @@ public class RelaxDataValue  {
 
     public RelaxEquations getRelaxEquations() { return relaxObj; }
 
-    public RelaxDataValue(MolDataValues molDataValue, double r1,
+    public RelaxDataValue(MolDataValues<?> molDataValue, double r1,
                           double r1Error, double r2, double r2Error,
                           RelaxEquations relaxObj) {
         this.molDataValue = molDataValue;
@@ -42,8 +42,12 @@ public class RelaxDataValue  {
     }
 
 
-    public MolDataValues getMolData() {
+    public MolDataValues<?> getMolData() {
         return molDataValue;
     }
+
+    public abstract double[] getObservables();
+    public abstract double[] getObservableErrors();
+    public abstract void setObservables(double[] values);
 
 }

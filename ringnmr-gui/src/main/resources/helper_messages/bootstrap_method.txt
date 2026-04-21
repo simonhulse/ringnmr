@@ -1,0 +1,15 @@
+Specifies the means by which datasets are sampled for bootstrapping, in order to derive parameter errors, as well as values if bootstrap aggregation or regularization are used.
+
+Parametric
+Each bootstrap dataset comprises datapoints which have been derived from the original data by perturbing their values with noise. Each datapoint's noise value is sampled using a normal distribution whose standard deviation is given by the datapoint's error bar.
+
+Nonparametric
+Bootstrap datasets are genreated by sampling from the original dataset with replacement. There are a finite number of samples that can be generated using this method, depending on the moiety type and number of fields that data exists for.
+Amide, 2 fields: 3³ = 27
+Amide, 3 fields: 7³ = 343
+Amide, 4 fields: 19³ = 6859
+<TODO: Deuterium>
+In effect, nonparametric bootstrapping involves weighting datapoints with integer weights (the sum of all weights will always equal the number of datapoints).
+
+Bayesian
+Bootstrap datasets are sampled by weighting datapoints using samples from a symmetric Dirichlet distribution.

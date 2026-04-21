@@ -4,11 +4,11 @@
     <parent>
         <groupId>org.comdnmr</groupId>
         <artifactId>ringnmr-parent</artifactId>
-        <version>1.36-SNAPSHOT</version>
+        <version>1.38</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>ringnmr</artifactId>
-    <version>1.36-SNAPSHOT</version>
+    <version>1.38</version>
     <name>ringnmr</name>
     <packaging>jar</packaging>
     <properties>
@@ -30,7 +30,7 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-core</artifactId>
-            <version>11.4.37-SNAPSHOT</version>
+            <version>11.4.38-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

@@ -28,12 +28,12 @@ public class BootstrapSamplerTest {
         ASP_3_DATA.put("NOEerr", List.of(0.00120198, 0.00462507, 0.00075348));
     };
 
-    private MolDataValues data;
+    private R1R2NOEMolDataValues data;
 
     @Before
     public void setUp() {
         int nFields = ASP_3_DATA.get("R1").size();
-        data = new MolDataValues("1.H", new double[3], new DynamicsSource(true, true, true, true));
+        data = new R1R2NOEMolDataValues("1.H", new double[3], new DynamicsSource(true, true, true, true));
         for (int i = 0; i < nFields; i++) {
             double r1 = ASP_3_DATA.get("R1").get(i);
             double r1Err = ASP_3_DATA.get("R1err").get(i);
@@ -99,7 +99,7 @@ public class BootstrapSamplerTest {
 
     @Test
     public void testParametricSampler() {
-        ParametricSampler sampler = new ParametricSampler(data);
+        ParametricSampler<R1R2NOEDataValue> sampler = new ParametricSampler<>(data);
 
         // Check that values of R1 sampled resemble normal distribution with
         // expected mean and stdev
@@ -107,7 +107,7 @@ public class BootstrapSamplerTest {
         int nSamples = 50;
         double[] r1Samples = new double[nSamples];
         for (int i = 0; i < nSamples; i++) {
-            MolDataValues bootstrapData = sampler.sample();
+            MolDataValues<R1R2NOEDataValue> bootstrapData = sampler.sample();
             r1Samples[i] = bootstrapData.getData().get(0).R1;
         }
 
@@ -122,10 +122,10 @@ public class BootstrapSamplerTest {
         );
 
         // Check that original data can be recovered
-        MolDataValues originalData = sampler.getOriginalData();
+        MolDataValues<R1R2NOEDataValue> originalData = sampler.getOriginalData();
         int nFields = originalData.getData().size();
         for (int i = 0; i < nFields; i++) {
-            R1R2NOEDataValue value = (R1R2NOEDataValue) originalData.getData().get(i);
+            R1R2NOEDataValue value = originalData.getData().get(i);
             assertEquals(ASP_3_DATA.get("R1").get(i), value.R1, DELTA);
             assertEquals(ASP_3_DATA.get("R1err").get(i), value.R1err, DELTA);
             assertEquals(ASP_3_DATA.get("R2").get(i), value.R2, DELTA);
@@ -180,12 +180,12 @@ public class BootstrapSamplerTest {
 
     @Test
     public void testNonparametricSampler() {
-        NonparametricSampler sampler = new NonparametricSampler(data);
+        NonparametricSampler<R1R2NOEDataValue> sampler = new NonparametricSampler<>(data);
         int nIterations = 343;
         Set<Integer> weightSet = new HashSet<>();
         for (int i = 0; i < nIterations; i++) {
-            MolDataValues sample = sampler.sample();
-            double[] weights = sample.weights;
+            MolDataValues<R1R2NOEDataValue> sample = sampler.sample();
+            double[] weights = sample.getWeights();
 
             // Check that all weights are 0.0, 1.0 or 2.0
             assertTrue(
@@ -222,21 +222,21 @@ public class BootstrapSamplerTest {
         }
 
         // Check original data has weight vector of ones
-        MolDataValues originalData = sampler.getOriginalData();
+        MolDataValues<R1R2NOEDataValue> originalData = sampler.getOriginalData();
         assertTrue(
             "Original data should have a weight vector of ones",
-            checkVectorOfOnes(originalData.weights)
+            checkVectorOfOnes(originalData.getWeights())
         );
     }
 
     @Test
     public void testBayesianSampler() {
-        BayesianSampler sampler = new BayesianSampler(data);
+        BayesianSampler<R1R2NOEDataValue> sampler = new BayesianSampler<>(data);
 
         int nSamples = 100;
         for (int i = 0; i < nSamples; i++) {
-            MolDataValues sample = sampler.sample();
-            double[] weights = sample.weights;
+            MolDataValues<R1R2NOEDataValue> sample = sampler.sample();
+            double[] weights = sample.getWeights();
             assertTrue(
                 String.format("Expected sum of weights to equal %d", weights.length),
                 checkWeightVectorHasCorrectSum(weights)
@@ -244,10 +244,10 @@ public class BootstrapSamplerTest {
         }
 
         // Check original data has weight vector of ones
-        MolDataValues originalData = sampler.getOriginalData();
+        MolDataValues<R1R2NOEDataValue> originalData = sampler.getOriginalData();
         assertTrue(
             "Original data should have a weight vector of ones",
-            checkVectorOfOnes(originalData.weights)
+            checkVectorOfOnes(originalData.getWeights())
         );
     }
 
