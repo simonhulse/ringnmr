@@ -2384,29 +2384,39 @@ public class PyController implements Initializable {
         var chartMap = setupCharts(chartNames);
         var usedSet = new TreeSet<String>();
         var molResProps = DataIO.getOrderParSetFromMolecule();
-        molResProps.entrySet().stream().filter(entry -> entry.getValue().active()).
-                forEach(entry -> {
-                    OrderParSet v = entry.getValue();
-                    String key = entry.getKey();
-                    var values = v.values();
-                    boolean hasNull = values.stream().anyMatch(value -> value.getValue() == null);
-                    if (!hasNull) {
-                        var setName = v.name();
-                        for (var parName : chartNames) {
-                            boolean hasValue = values.stream().anyMatch(value
-                                    -> (value.getValue(parName) != null) && (value.getValue(parName) > 1.0e-6));
-                            if (hasValue) {
-                                activeChart = chartMap.get(parName);
-                                showRelaxationValues(setName, parName, parName);
-                                usedSet.add(parName);
-                            }
-                        }
-                    }
-                });
+        var activeSets = molResProps.values().stream()
+                .filter(OrderParSet::active)
+                .filter(v -> !v.values().stream().anyMatch(value -> value.getValue() == null))
+                .collect(Collectors.toList());
+
+        // First pass: find which parameters have any non-zero values across all active sets
+        for (var orderParSet : activeSets) {
+            var values = orderParSet.values();
+            for (var parName : chartNames) {
+                boolean hasValue = values.stream().anyMatch(value
+                        -> (value.getValue(parName) != null) && (value.getValue(parName) > 1.0e-6));
+                if (hasValue) {
+                    usedSet.add(parName);
+                }
+            }
+        }
         if (usedSet.contains("S2") && !(usedSet.contains("Sf2") && usedSet.contains("Ss2"))) {
             usedSet.remove("Sf2");
             usedSet.remove("Ss2");
         }
+
+        // Second pass: add a series from every active set to every used chart,
+        // reserving equal space even when a set has no values for that parameter
+        for (var orderParSet : activeSets) {
+            var setName = orderParSet.name();
+            for (var parName : chartNames) {
+                if (usedSet.contains(parName)) {
+                    activeChart = chartMap.get(parName);
+                    showRelaxationValues(setName, parName, parName);
+                }
+            }
+        }
+
         for (String chartName : chartNames) {
             if (!usedSet.contains(chartName)) {
                 ResidueChart resChart = chartMap.get(chartName);

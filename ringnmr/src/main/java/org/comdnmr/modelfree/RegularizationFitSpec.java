@@ -378,7 +378,6 @@ public class RegularizationFitSpec extends FitSpec {
     public ModelFitResult fit(String key, MolDataValues<?> data, Map<String, OrderParSet> orderParSetMap) {
         RelaxFit relaxFit = initRelaxFit(key, data);
         MFModelIso2sf model = (MFModelIso2sf) getModel("2sf", data);
-        System.out.printf("model: %s%n", model);
         data.setTestModel(model);
 
         int nParameters = model.getNPars();
