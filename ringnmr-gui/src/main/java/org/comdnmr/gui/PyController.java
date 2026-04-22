@@ -271,6 +271,8 @@ public class PyController implements Initializable {
 
     ResidueFitter residueFitter;
     FitModel modelFitter;
+    // Active/inactive state of fit results prior to a model-free fit, used to preserve user-set visibility after re-fitting
+    Map<String, Boolean> preFitActiveStates = new HashMap<>();
     List<ResidueChart.SelectionValue> fittingResidues = new ArrayList<>();
     boolean simulate = true;
     ChartInfo chartInfo = new ChartInfo();
@@ -1765,6 +1767,8 @@ public class PyController implements Initializable {
             .build();
 
         fitModel.setFitSpec(fitSpec);
+        preFitActiveStates = DataIO.getOrderParSetFromMolecule().entrySet().stream()
+            .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, e -> e.getValue().active()));
         try {
             fitModel.updaters(this::updateFitProgress, this::updateStatus);
             fitModel.fitResidues();
@@ -1775,23 +1779,19 @@ public class PyController implements Initializable {
     }
 
     public void finishModelFreeFit() {
-
-        // Double tauFit = modelFitter.getTau();
-        // if (tauFit != null) {
-        //     tauCalcField.setText(String.format("%.2f", tauFit));
-        //     tauField.setText(tauCalcField.getText());
-        // }
-
         Map<String, OrderParSet> molResProps = DataIO.getOrderParSetFromMolecule();
         for (var entry : molResProps.entrySet()) {
             String setName = entry.getKey();
             OrderParSet orderParSet = entry.getValue();
-            orderParSet.active(!setName.startsWith("CONVENTIONAL") || setName.endsWith("-BEST"));
+            boolean defaultActive = !setName.startsWith("CONVENTIONAL") || setName.endsWith("-BEST");
+            boolean active = preFitActiveStates.containsKey(setName)
+                ? preFitActiveStates.get(setName) || defaultActive
+                : defaultActive;
+            orderParSet.active(active);
         }
 
         addMoleculeDataToAxisMenu();
         showModelFreeData();
-        // nReplicatesSlider.setValue(modelFitter.getNReplicates());
     }
 
     public void estimateCorrelationTime() {
