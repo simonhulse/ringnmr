@@ -2,6 +2,8 @@ package org.comdnmr.modelfree;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -9,7 +11,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.comdnmr.modelfree.models.MFModelIso;
 
 import org.nmrfx.chemistry.relax.OrderPar;
@@ -262,8 +263,21 @@ public class ConventionalFitSpec extends FitSpec {
         RelaxFit relaxFit = initRelaxFit(key, data);
         List<MFModelIso> models = getModels(data);
 
-        Optional<Triple<Score, ModelFitResult, MFModelIso>> best = Optional.empty();
+        Map<String, Score> originalFits = new HashMap<>();
+        for (MFModelIso model : models) {
+            data.setTestModel(model);
+            Score score = runFit(relaxFit, model);
+            originalFits.put(model.getName(), score);
+        }
+        Map.Entry<String, Score> bestOriginalFit = Collections.min(
+            originalFits.entrySet(),
+            (fit1, fit2) -> Double.compare(fit1.getValue().aicc().get(), fit2.getValue().aicc().get())
+        );
+        String bestModelName = bestOriginalFit.getKey();
+        Score bestScore = bestOriginalFit.getValue();
+
         int nWeights = data.getNValues();
+        Optional<ModelFitResult> result =  Optional.empty();
         for (MFModelIso model : models) {
             data.setTestModel(model);
             int nParameters = model.getNPars();
@@ -282,36 +296,41 @@ public class ConventionalFitSpec extends FitSpec {
                 for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
             }
 
-            // Fit the original data to obtain final parameter values,
-            // then select the optimal model using AICc
-            data = sampler.getOriginalData();
-            relaxFit.setRelaxData(key, data);
-            Score score = runFit(relaxFit, model);
-
-            double[] fitParameters = score.pars;
+            String modelName = model.getName();
+            double[] fitParameters = originalFits.get(modelName).pars;
             double[] fitErrors = computeStatistics(parameters, weights).getRight();
 
             String resultKey = makeKey(model.getName());
             orderParSetMap.computeIfAbsent(resultKey, ky -> new OrderParSet(ky));
-            OrderPar orderPar = makeOrderPar(
+            makeOrderPar(
                 orderParSetMap.get(resultKey),
                 sampler.getOriginalData(),
                 key,
-                score,
+                originalFits.get(modelName),
                 model,
                 fitParameters,
                 fitErrors
             );
 
-            if (best.isEmpty() || score.aicc().get() < best.get().getLeft().aicc().get()) {
-                ModelFitResult result = new ModelFitResult(orderPar, parameters, null);
-                best = Optional.of(Triple.of(score, result, model));
+            // Bit hacky, but I'm simply making a duplicate element in the
+            // OrderParSetMap for the "optimal" model.
+            if (modelName == bestModelName) {
+                String bestKey = KEY + "-BEST";
+                orderParSetMap.computeIfAbsent(bestKey, ky -> new OrderParSet(ky));
+                OrderPar bestOrderPar = makeOrderPar(
+                    orderParSetMap.get(bestKey),
+                    sampler.getOriginalData(),
+                    key,
+                    originalFits.get(modelName),
+                    model,
+                    fitParameters,
+                    fitErrors
+                );
+                result = Optional.of(new ModelFitResult(bestOrderPar, parameters, null));
             }
         }
 
-        return best
-            .orElseThrow(() -> new AssertionError("`best` should not be empty here!"))
-            .getMiddle();
+        return result.orElseThrow(() -> new AssertionError("`result` shouldn't be empty here"));
     }
 
     /**

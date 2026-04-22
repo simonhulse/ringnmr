@@ -1783,14 +1783,10 @@ public class PyController implements Initializable {
         // }
 
         Map<String, OrderParSet> molResProps = DataIO.getOrderParSetFromMolecule();
-        // boolean hasBest = molResProps.keySet().stream().anyMatch(setName -> setName.endsWith("best"));
         for (var entry : molResProps.entrySet()) {
             String setName = entry.getKey();
             OrderParSet orderParSet = entry.getValue();
-            orderParSet.active(true);
-            // if (hasBest) {
-            //     orderParSet.active(setName.endsWith("best"));
-            // }
+            orderParSet.active(!setName.startsWith("CONVENTIONAL") || setName.endsWith("-BEST"));
         }
 
         addMoleculeDataToAxisMenu();
