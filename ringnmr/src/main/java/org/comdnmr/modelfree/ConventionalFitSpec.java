@@ -276,7 +276,7 @@ public class ConventionalFitSpec extends FitSpec {
         String bestModelName = bestOriginalFit.getKey();
         Score bestScore = bestOriginalFit.getValue();
 
-        int nWeights = data.getNValues();
+        int nWeights = data.getNSpectralDensities();
         Optional<ModelFitResult> result =  Optional.empty();
         for (MFModelIso model : models) {
             data.setTestModel(model);

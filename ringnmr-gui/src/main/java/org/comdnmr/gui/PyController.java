@@ -681,7 +681,7 @@ public class PyController implements Initializable {
         tauMFractionLabel = new Label("τm fraction:");
         tauMTreatmentGridPane.add(tauMFractionLabel, 3, 1);
 
-        tauMFractionTextField = new ValidatedDecimalTextField();
+        tauMFractionTextField = new ValidatedDecimalTextField(v -> v >= 0.0 && v <= 1.0, "");
         tauMFractionHBox = UiHelpers.createElementWithHelper(tauMFractionTextField, "taum_fraction.txt");
         tauMTreatmentGridPane.add(tauMFractionHBox, 4, 1);
 
@@ -1576,31 +1576,18 @@ public class PyController implements Initializable {
         if (!node.isVisible()) node.setVisible(true);
     }
 
-    private <T> void removeOption(ChoiceBox<T> choiceBox, T option) {
-        List<T> items = choiceBox.getItems();
-        if (items.contains(option)) items.remove(option);
-    }
-
-    private <T> void addOption(ChoiceBox<T> choiceBox, T option) {
-        List<T> items = choiceBox.getItems();
-        if (!items.contains(option)) items.add(option);
-    }
-
     private void updateMoietyType(MoietyType newValue) {
         BiConsumer<GridPane, Node> model1sfBoxAction;
         Consumer<Node> useRQAction;
-        BiConsumer<ChoiceBox<FitSpec.BootstrapMode>, FitSpec.BootstrapMode> bootstrapAction;
 
         switch (newValue) {
             case AMIDE -> {
                 model1sfBoxAction = this::removeNode;
                 useRQAction = this::hideNode;
-                bootstrapAction = this::addOption;
             }
             case DEUTERATED_METHYL -> {
                 model1sfBoxAction = this::addNode;
                 useRQAction = this::showNode;
-                bootstrapAction = this::removeOption;
             }
             default -> throw new AssertionError("Unreachable");
         }
@@ -1608,7 +1595,6 @@ public class PyController implements Initializable {
         model1sfBoxAction.accept(modelGridPane, modelBoxes.get("1sf"));
         useRQAction.accept(useRQLabel);
         useRQAction.accept(useRQHBox);
-        bootstrapAction.accept(bootstrapMethodChoice, FitSpec.BootstrapMode.NONPARAMETRIC);
     }
 
     private Class<? extends FitSpec> getFitSpecClass() {

@@ -29,6 +29,11 @@ public class R1R2NOEMolDataValues extends MolDataValues<R1R2NOEDataValue> {
     }
 
     @Override
+    public int getNSpectralDensities() {
+        return dataValues.size() * 3;
+    }
+
+    @Override
     public MolDataValues<R1R2NOEDataValue> createEmpty() {
         return new R1R2NOEMolDataValues(atom, vector);
     }

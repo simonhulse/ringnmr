@@ -184,7 +184,7 @@ public class NonparametricSampler<T extends RelaxDataValue> extends WeightSample
             getSelectionsRow(pH)
         };
 
-        double[] weights = new double[getNValues()];
+        double[] weights = new double[getNSpectralDensities()];
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < getNFields(); j++) {
                 weights[selections[i][j] * 3 + i] += 1.0;

@@ -381,7 +381,7 @@ public class RegularizationFitSpec extends FitSpec {
         data.setTestModel(model);
 
         int nParameters = model.getNPars();
-        int nWeights = data.getNValues();
+        int nWeights = data.getNSpectralDensities();
         double[][] parameters = new double[nParameters][nReplicates];
         double[][] weights = new double[nWeights][nReplicates];
         BootstrapSampler<? extends RelaxDataValue> sampler = getBootstrapSampler(data);

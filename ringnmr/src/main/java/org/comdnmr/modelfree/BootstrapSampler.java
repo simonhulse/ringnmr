@@ -62,8 +62,8 @@ public abstract class BootstrapSampler<T extends RelaxDataValue> implements Obje
      *
      * @return the number of J(ω) values
      */
-    public int getNValues() {
-        return data.getNValues();
+    public int getNSpectralDensities() {
+        return data.getNSpectralDensities();
     }
 
     /**
