@@ -386,7 +386,7 @@ public abstract class FitSpec {
             case PARAMETRIC    -> new ParametricSampler<>(data);
             case NONPARAMETRIC -> switch (moietyType) {
                 case DEUTERATED_METHYL -> (BootstrapSampler<T>) new DeuteriumNonparametricSampler((MolDataValues<DeuteriumDataValue>) data);
-                case AMIDE             -> new NonparametricSampler<>(data);
+                case AMIDE             -> new AmideNonparametricSampler<>(data);
             };
             case BAYESIAN      -> new BayesianSampler<>(data);
         };

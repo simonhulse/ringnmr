@@ -14,9 +14,10 @@ import org.apache.commons.rng.simple.RandomSource;
  * mutated to reflect the current bootstrap replicate; callers must therefore process or
  * copy the result before drawing the next sample.
  *
- * <p>Two concrete sub-hierarchies exist:
+ * <p>Two sub-hierarchies exist:
  * <ul>
- *   <li>{@link WeightSampler} (and its subclasses {@link NonparametricSampler} and
+ *   <li>{@link WeightSampler} (and its concrete subclasses
+ *       {@link AmideNonparametricSampler}, {@link DeuteriumNonparametricSampler} and
  *       {@link BayesianSampler}) — resamples by assigning per-observation weights
  *       without modifying the measured values.</li>
  *   <li>{@link ParametricSampler} — resamples by drawing new measured values from

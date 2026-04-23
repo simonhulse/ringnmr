@@ -1,5 +1,7 @@
 package org.comdnmr.modelfree;
 
+import java.util.Arrays;
+
 /**
  * Abstract base for weight-based bootstrap samplers.
  *
@@ -11,7 +13,7 @@ package org.comdnmr.modelfree;
  * <p>{@link #getOriginalData()} resets all weights to 1.0, restoring uniform
  * weighting equivalent to an unperturbed fit.
  *
- * @see NonparametricSampler
+ * @see AmideNonparametricSampler
  * @see BayesianSampler
  */
 public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapSampler<T> {
