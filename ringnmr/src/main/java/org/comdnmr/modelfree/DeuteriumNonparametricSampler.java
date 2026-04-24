@@ -33,7 +33,6 @@ public class DeuteriumNonparametricSampler extends WeightSampler<DeuteriumDataVa
     @Override
     protected double[] sampleWeights() {
         if (!iterator.hasNext()) {
-            System.out.printf("getNSpectralDensities(): %s%n", getNSpectralDensities());
             throw new NoSuchElementException(String.format(
                 "Maximum number of samples exceeded. " +
                 "This sampler cannot be sampled more than %d times.",

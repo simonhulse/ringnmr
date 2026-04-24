@@ -1,5 +1,6 @@
 package org.comdnmr.modelfree;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -285,60 +286,63 @@ public class RegularizationFitSpec extends FitSpec {
     * @return the processed parameter array
     */
     protected double[] processParamsAfterFit(double[] params, boolean fitTau) {
-       int start = fitTau ? 1 : 0;
-       double s1   = params[start];
-       double tau1 = params[start + 1];
-       double s2   = params[start + 2];
-       double tau2 = params[start + 3];
-
-       double sf2, tauf, ss2, taus;
-
-       // No local motions — both order parameters are effectively 1
-       if (s1 > S2_THOLD && s2 > S2_THOLD) {
-           sf2 = ss2 = 1.0;
-           tauf = taus = 0.0;
-       }
-
-       // One local motion — the other degree of freedom is frozen out
-       else if (s1 > S2_THOLD || s2 > S2_THOLD) {
-           double s   = (s1 > S2_THOLD) ? s2 : s1;
-           double tau = (s1 > S2_THOLD) ? tau2 : tau1;
-           if (tau < TAU_THOLD) {
-               // Fast motion with effectively zero correlation time (Model 1)
-               sf2 = s;   tauf = 0.0; ss2 = 1.0; taus = 0.0;
-           } else if (tau < MFModelIso2sf.SLOW_LIMIT) {
-               // Resolvable fast motion (Model 1f)
-               sf2 = s;   tauf = tau; ss2 = 1.0; taus = 0.0;
-           } else {
-               // Slow motion (Model 1s)
-               sf2 = 1.0; tauf = 0.0; ss2 = s;   taus = tau;
-           }
-       }
-
-       // Two local motions
-       else {
-           if (tau1 < TAU_THOLD) {
-               // tau1 is instantaneous: assign it to the fast slot (Model 2s)
-               sf2 = s1; tauf = 0.0; ss2 = s2; taus = tau2;
-           } else if (tau2 < TAU_THOLD) {
-               // tau2 is instantaneous: assign it to the fast slot (Model 2s)
-               sf2 = s2; tauf = 0.0; ss2 = s1; taus = tau1;
-           } else {
-               // Both timescales are resolvable: sort so that tauf < taus (Model 2sf)
-               if (tau1 < tau2) {
-                   sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
-               } else {
-                   sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
-               }
-           }
-       }
-
-       params[start]     = sf2;
-       params[start + 1] = tauf;
-       params[start + 2] = ss2;
-       params[start + 3] = taus;
-
        return params;
+
+       // FIXME: was using this for amide data. It is incompatible for deuterium
+       // int start = fitTau ? 1 : 0;
+       // double s1   = params[start];
+       // double tau1 = params[start + 1];
+       // double s2   = params[start + 2];
+       // double tau2 = params[start + 3];
+
+       // double sf2, tauf, ss2, taus;
+
+       // // No local motions — both order parameters are effectively 1
+       // if (s1 > S2_THOLD && s2 > S2_THOLD) {
+       //     sf2 = ss2 = 1.0;
+       //     tauf = taus = 0.0;
+       // }
+
+       // // One local motion — the other degree of freedom is frozen out
+       // else if (s1 > S2_THOLD || s2 > S2_THOLD) {
+       //     double s   = (s1 > S2_THOLD) ? s2 : s1;
+       //     double tau = (s1 > S2_THOLD) ? tau2 : tau1;
+       //     if (tau < TAU_THOLD) {
+       //         // Fast motion with effectively zero correlation time (Model 1)
+       //         sf2 = s;   tauf = 0.0; ss2 = 1.0; taus = 0.0;
+       //     } else if (tau < MFModelIso2sf.SLOW_LIMIT) {
+       //         // Resolvable fast motion (Model 1f)
+       //         sf2 = s;   tauf = tau; ss2 = 1.0; taus = 0.0;
+       //     } else {
+       //         // Slow motion (Model 1s)
+       //         sf2 = 1.0; tauf = 0.0; ss2 = s;   taus = tau;
+       //     }
+       // }
+
+       // // Two local motions
+       // else {
+       //     if (tau1 < TAU_THOLD) {
+       //         // tau1 is instantaneous: assign it to the fast slot (Model 2s)
+       //         sf2 = s1; tauf = 0.0; ss2 = s2; taus = tau2;
+       //     } else if (tau2 < TAU_THOLD) {
+       //         // tau2 is instantaneous: assign it to the fast slot (Model 2s)
+       //         sf2 = s2; tauf = 0.0; ss2 = s1; taus = tau1;
+       //     } else {
+       //         // Both timescales are resolvable: sort so that tauf < taus (Model 2sf)
+       //         if (tau1 < tau2) {
+       //             sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
+       //         } else {
+       //             sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
+       //         }
+       //     }
+       // }
+
+       // params[start]     = sf2;
+       // params[start + 1] = tauf;
+       // params[start + 2] = ss2;
+       // params[start + 3] = taus;
+
+       // return params;
     }
 
     /**
@@ -399,7 +403,9 @@ public class RegularizationFitSpec extends FitSpec {
 
         Pair<double[], double[]> parameterEstimates = computeStatistics(parameters, weights);
         double[] fitParameters = parameterEstimates.getLeft();
+        System.out.printf("fitParameters:%n%s%n", Arrays.toString(fitParameters));
         double[] fitErrors = parameterEstimates.getRight();
+        System.out.printf("fitErrors:%n%s%n", Arrays.toString(fitErrors));
 
         orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
         // FIXME: the Score used here (scores[0]) is from the first replicate.
