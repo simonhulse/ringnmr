@@ -286,63 +286,64 @@ public class RegularizationFitSpec extends FitSpec {
     * @return the processed parameter array
     */
     protected double[] processParamsAfterFit(double[] params, boolean fitTau) {
-       return params;
+        int start = fitTau ? 1 : 0;
+        double s1   = params[start];      // sf2
+        double tau1 = params[start + 1];  // tau_f
+        double s2   = params[start + 2];  // ss2
+        double tau2 = params[start + 3];  // tau_s
 
-       // FIXME: was using this for amide data. It is incompatible for deuterium
-       // int start = fitTau ? 1 : 0;
-       // double s1   = params[start];
-       // double tau1 = params[start + 1];
-       // double s2   = params[start + 2];
-       // double tau2 = params[start + 3];
+        double sf2, tauf, ss2, taus;
 
-       // double sf2, tauf, ss2, taus;
+        if (moietyType == MoietyType.AMIDE) {
+            // For amide (sN=1): sf2≈1 means no fast-motion contribution.
+            // The two-motion spectral density terms are symmetric under a
+            // parameter swap, so sorting tau_f ≤ tau_s is valid.
+            if (s1 > S2_THOLD && s2 > S2_THOLD) {
+                // No local motions
+                sf2 = ss2 = 1.0;
+                tauf = taus = 0.0;
+            } else if (s1 > S2_THOLD || s2 > S2_THOLD) {
+                // One local motion
+                double s   = (s1 > S2_THOLD) ? s2 : s1;
+                double tau = (s1 > S2_THOLD) ? tau2 : tau1;
+                if (tau < TAU_THOLD) {
+                    sf2 = s;   tauf = 0.0; ss2 = 1.0; taus = 0.0;
+                } else if (tau < MFModelIso2sf.SLOW_LIMIT) {
+                    sf2 = s;   tauf = tau; ss2 = 1.0; taus = 0.0;
+                } else {
+                    sf2 = 1.0; tauf = 0.0; ss2 = s;   taus = tau;
+                }
+            } else {
+                // Two local motions: sort so that tauf ≤ taus
+                if (tau1 < TAU_THOLD) {
+                    sf2 = s1; tauf = 0.0; ss2 = s2; taus = tau2;
+                } else if (tau2 < TAU_THOLD) {
+                    sf2 = s2; tauf = 0.0; ss2 = s1; taus = tau1;
+                } else if (tau1 < tau2) {
+                    sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
+                } else {
+                    sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
+                }
+            }
+        } else {
+            // For deuterium (sN=9): sf2/sN is never near zero for physical sf2
+            // values, so sf2≈1 does NOT suppress tau_f.  The spectral density
+            // terms are asymmetric in sf2/ss2 due to sN, so sorting is invalid.
+            // Only suppress slow motion if ss2≈1, or if tau_s < tau_f (unphysical
+            // ordering that cannot be resolved by sorting).
+            if (s2 > S2_THOLD || (tau2 > TAU_THOLD && tau2 < tau1)) {
+                sf2 = s1; tauf = tau1; ss2 = 1.0; taus = 0.0;
+            } else {
+                sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
+            }
+        }
 
-       // // No local motions — both order parameters are effectively 1
-       // if (s1 > S2_THOLD && s2 > S2_THOLD) {
-       //     sf2 = ss2 = 1.0;
-       //     tauf = taus = 0.0;
-       // }
+        params[start]     = sf2;
+        params[start + 1] = tauf;
+        params[start + 2] = ss2;
+        params[start + 3] = taus;
 
-       // // One local motion — the other degree of freedom is frozen out
-       // else if (s1 > S2_THOLD || s2 > S2_THOLD) {
-       //     double s   = (s1 > S2_THOLD) ? s2 : s1;
-       //     double tau = (s1 > S2_THOLD) ? tau2 : tau1;
-       //     if (tau < TAU_THOLD) {
-       //         // Fast motion with effectively zero correlation time (Model 1)
-       //         sf2 = s;   tauf = 0.0; ss2 = 1.0; taus = 0.0;
-       //     } else if (tau < MFModelIso2sf.SLOW_LIMIT) {
-       //         // Resolvable fast motion (Model 1f)
-       //         sf2 = s;   tauf = tau; ss2 = 1.0; taus = 0.0;
-       //     } else {
-       //         // Slow motion (Model 1s)
-       //         sf2 = 1.0; tauf = 0.0; ss2 = s;   taus = tau;
-       //     }
-       // }
-
-       // // Two local motions
-       // else {
-       //     if (tau1 < TAU_THOLD) {
-       //         // tau1 is instantaneous: assign it to the fast slot (Model 2s)
-       //         sf2 = s1; tauf = 0.0; ss2 = s2; taus = tau2;
-       //     } else if (tau2 < TAU_THOLD) {
-       //         // tau2 is instantaneous: assign it to the fast slot (Model 2s)
-       //         sf2 = s2; tauf = 0.0; ss2 = s1; taus = tau1;
-       //     } else {
-       //         // Both timescales are resolvable: sort so that tauf < taus (Model 2sf)
-       //         if (tau1 < tau2) {
-       //             sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
-       //         } else {
-       //             sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
-       //         }
-       //     }
-       // }
-
-       // params[start]     = sf2;
-       // params[start + 1] = tauf;
-       // params[start + 2] = ss2;
-       // params[start + 3] = taus;
-
-       // return params;
+        return params;
     }
 
     /**
