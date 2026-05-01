@@ -28,6 +28,34 @@ public class DeuteriumMolDataValues extends MolDataValues<DeuteriumDataValue> {
         return result;
     }
 
+    private Integer cachedNSpectralDensities = null;
+
+    @Override
+    public void addData(DeuteriumDataValue value) {
+        cachedNSpectralDensities = null;
+        super.addData(value);
+    }
+
+    @Override
+    public int getNSpectralDensities() {
+        if (cachedNSpectralDensities != null) return cachedNSpectralDensities;
+        if (dataValues.isEmpty()) return 0;
+        List<Double> fieldList = new ArrayList<>();
+        fieldList.add(0.0);
+        for (DeuteriumDataValue dv : dataValues) {
+            double omega = dv.getB0() * RelaxEquations.GAMMA_D / RelaxEquations.GAMMA_H * 2.0 * Math.PI;
+            if (fieldList.stream().noneMatch(f -> f > 0 && Math.abs((omega - f) / f) < 0.01)) {
+                fieldList.add(omega);
+            }
+            double omega2 = omega * 2.0;
+            if (fieldList.stream().noneMatch(f -> f > 0 && Math.abs((omega2 - f) / f) < 0.01)) {
+                fieldList.add(omega2);
+            }
+        }
+        cachedNSpectralDensities = fieldList.size();
+        return cachedNSpectralDensities;
+    }
+
     @Override
     public MolDataValues<DeuteriumDataValue> createEmpty() {
         return new DeuteriumMolDataValues(atom, vector);

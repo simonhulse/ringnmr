@@ -179,8 +179,8 @@ public class BootstrapSamplerTest {
     }
 
     @Test
-    public void testNonparametricSampler() {
-        NonparametricSampler<R1R2NOEDataValue> sampler = new NonparametricSampler<>(data);
+    public void testAmideNonparametricSampler() {
+        AmideNonparametricSampler<R1R2NOEDataValue> sampler = new AmideNonparametricSampler<>(data);
         int nIterations = 343;
         Set<Integer> weightSet = new HashSet<>();
         for (int i = 0; i < nIterations; i++) {

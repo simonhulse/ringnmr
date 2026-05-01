@@ -1,5 +1,7 @@
 package org.comdnmr.modelfree;
 
+import java.util.Arrays;
+
 /**
  * Abstract base for weight-based bootstrap samplers.
  *
@@ -11,7 +13,7 @@ package org.comdnmr.modelfree;
  * <p>{@link #getOriginalData()} resets all weights to 1.0, restoring uniform
  * weighting equivalent to an unperturbed fit.
  *
- * @see NonparametricSampler
+ * @see AmideNonparametricSampler
  * @see BayesianSampler
  */
 public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapSampler<T> {
@@ -21,7 +23,7 @@ public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapS
     /**
      * Generates a weight vector for the next bootstrap replicate.
      *
-     * <p>The returned array must have length {@link #getNValues()}. Each element
+     * <p>The returned array must have length {@link #getNSpectralDensities()}. Each element
      * gives the weight of the corresponding J(ω) observation; the classical bootstrap
      * uses integer counts, while the Bayesian bootstrap uses positive real values.
      *
@@ -47,7 +49,7 @@ public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapS
      * <p>Resets all observation weights to 1.0, restoring the unweighted state.
      */
     public MolDataValues<T> getOriginalData() {
-        int nJ = getNValues();
+        int nJ = getNSpectralDensities();
         double[] weights = new double[nJ];
         for (int j = 0; j < nJ; j++) weights[j] = 1.0;
         data.setWeights(weights);

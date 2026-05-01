@@ -380,10 +380,14 @@ public abstract class FitSpec {
      * @param data the relaxation data to be resampled
      * @return a sampler matching {@link #bootstrapMode}
      */
+    @SuppressWarnings("unchecked")
     public <T extends RelaxDataValue> BootstrapSampler<T> getBootstrapSampler(MolDataValues<T> data) {
         return switch (bootstrapMode) {
             case PARAMETRIC    -> new ParametricSampler<>(data);
-            case NONPARAMETRIC -> new NonparametricSampler<>(data);
+            case NONPARAMETRIC -> switch (moietyType) {
+                case DEUTERATED_METHYL -> (BootstrapSampler<T>) new DeuteriumNonparametricSampler((MolDataValues<DeuteriumDataValue>) data);
+                case AMIDE             -> new AmideNonparametricSampler<>(data);
+            };
             case BAYESIAN      -> new BayesianSampler<>(data);
         };
     }

@@ -93,9 +93,13 @@ public class MFModelIso2sf extends MFModelIso2s {
             double term3 = (1.0 - sf2) * ss2 * (
                 (tauF * tauMPlusTauF) / (omega2 * tauM2TimesTauF2 + tauMPlusTauF2)
             );
-            double term4 = (1.0 - sf2) * (1.0 - ss2) * (
-                (tauFTimesTauS * tauPrime) / (omega2 * tauM2TimesTauF2TimesTauS2 + tauPrime2)
-            );
+            // guard against division by zero error when tauf and taus are zero
+            double term4 = 0.0;
+            if (!(tauF < 1.0e-15 && tauS < 1.0e-15)) {
+                term4 = (1.0 - sf2) * (1.0 - ss2) * (
+                    (tauFTimesTauS * tauPrime) / (omega2 * tauM2TimesTauF2TimesTauS2 + tauPrime2)
+                );
+            }
             js[index++] = tauMTimesPt4 * (term1 + term2 + term3 + term4);
         }
 

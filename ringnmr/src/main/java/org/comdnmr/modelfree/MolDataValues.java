@@ -83,7 +83,7 @@ public abstract class MolDataValues<T extends RelaxDataValue> {
     public double[] getWeights() {
         double[] weights;
         if (this.weights == null) {
-            int nWeights = getNValues();
+            int nWeights = getNSpectralDensities();
             weights = new double[nWeights];
             Arrays.fill(weights, 1.0);
         } else {
@@ -137,6 +137,8 @@ public abstract class MolDataValues<T extends RelaxDataValue> {
     public abstract double[][] calcJ();
 
     public abstract List<double[][]> calcIndependentJ();
+
+    public abstract int getNSpectralDensities();
 
     public abstract MolDataValues<T> createEmpty();
 

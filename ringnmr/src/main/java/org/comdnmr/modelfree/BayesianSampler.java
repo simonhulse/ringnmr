@@ -13,8 +13,8 @@ import org.apache.commons.rng.sampling.distribution.DirichletSampler;
  * {@code nValues} rather than 1, so that the downstream weighted least-squares
  * objective is on the same scale as the unweighted case.
  *
- * <p>This sampler can be called an unlimited number of times, unlike
- * {@link NonparametricSampler} which exhausts after {@code nSel³} draws.
+ * <p>This sampler can be called an unlimited number of times, unlike the nonparametric samplers
+ * {@link AmideNonparametricSampler} and {@link DeuteriumNonparametricSampler}.
  */
 public class BayesianSampler<T extends RelaxDataValue> extends WeightSampler<T> {
 
@@ -30,17 +30,17 @@ public class BayesianSampler<T extends RelaxDataValue> extends WeightSampler<T> 
      */
     public BayesianSampler(MolDataValues<T> data) {
         super(data);
-        dirichlet = DirichletSampler.symmetric(rng, getNValues(), ALPHA);
+        dirichlet = DirichletSampler.symmetric(rng, getNSpectralDensities(), ALPHA);
     }
 
     /**
      * Draws a weight vector from Dirichlet(1, …, 1) and scales it so that the
      * weights sum to {@code nValues}.
      *
-     * @return per-observation bootstrap weights summing to {@code getNValues()}
+     * @return per-observation bootstrap weights summing to {@code getNSpectralDensities()}
      */
     public double[] sampleWeights() {
-        int nJ = getNValues();
+        int nJ = getNSpectralDensities();
         double[] weights = dirichlet.sample();
         // Weights for Dirichlet distribution sum to 1.
         // Scale these so that they sum to nJ.
