@@ -156,7 +156,7 @@ public class BaggingFitSpec extends FitSpec {
 
         // nParameters is 5 when tauM is free, 4 when it is fixed
         int nParameters = model2sf.getNPars();
-        int nWeights = data.getNValues();
+        int nWeights = data.getNSpectralDensities();
         double[][] parameters = new double[nParameters][nReplicates];
         double[][] weights = new double[nWeights][nReplicates];
         BootstrapSampler<? extends RelaxDataValue> sampler = getBootstrapSampler(data);

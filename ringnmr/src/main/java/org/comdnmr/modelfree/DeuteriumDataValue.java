@@ -19,6 +19,14 @@ public class DeuteriumDataValue extends RelaxDataValue {
         this.rQError = rQError;
     }
 
+    public double getRQ() { return rQ; }
+
+    public double getRQErr() { return rQError; }
+
+    public double getRAP() { return rAP; }
+
+    public double getRAPErr() { return rAPError; }
+
     @Override public double[] getObservables()       { return new double[]{R1, R2, rQ, rAP}; }
     @Override public double[] getObservableErrors()  { return new double[]{R1err, R2err, rQError, rAPError}; }
     @Override public void setObservables(double[] v) { R1 = v[0]; R2 = v[1]; rQ = v[2]; rAP = v[3]; }

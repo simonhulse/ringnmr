@@ -271,12 +271,20 @@ public class ConventionalFitSpec extends FitSpec {
         }
         Map.Entry<String, Score> bestOriginalFit = Collections.min(
             originalFits.entrySet(),
-            (fit1, fit2) -> Double.compare(fit1.getValue().aicc().get(), fit2.getValue().aicc().get())
+            // Return AICc if there is a sufficient number of datapoints, otherwise revert to AIC
+            // This is ironic I know, the AICc is supposed to be used with small samples.
+            (fit1, fit2) -> {
+                Optional<Double> fit1Aicc = fit1.getValue().aicc();
+                Optional<Double> fit2Aicc = fit2.getValue().aicc();
+                if (fit1Aicc.isPresent() && fit2Aicc.isPresent()) {
+                    return Double.compare(fit1Aicc.get(), fit2Aicc.get());
+                }
+                return Double.compare(fit1.getValue().aic(), fit2.getValue().aic());
+            }
         );
         String bestModelName = bestOriginalFit.getKey();
-        Score bestScore = bestOriginalFit.getValue();
 
-        int nWeights = data.getNValues();
+        int nWeights = data.getNSpectralDensities();
         Optional<ModelFitResult> result =  Optional.empty();
         for (MFModelIso model : models) {
             data.setTestModel(model);

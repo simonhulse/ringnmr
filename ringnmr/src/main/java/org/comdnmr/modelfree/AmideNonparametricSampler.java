@@ -22,7 +22,7 @@ import java.util.stream.IntStream;
  * observation is selected across the three frequency draws; selected twice → weight 2.0,
  * not selected → weight 0.0.
  */
-public class NonparametricSampler<T extends RelaxDataValue> extends WeightSampler<T> {
+public class AmideNonparametricSampler<T extends RelaxDataValue> extends WeightSampler<T> {
 
     // Iterator of randomly ordered ints which specifies the ordering of possible weight vectors.
     private final Iterator<Integer> iterator;
@@ -80,7 +80,7 @@ public class NonparametricSampler<T extends RelaxDataValue> extends WeightSample
     }
 
     /**
-     * Constructs a {@code NonparametricSampler} for the given relaxation data and
+     * Constructs a {@code AmideNonparametricSampler} for the given relaxation data and
      * pre-shuffles the full bootstrap index space.
      *
      * <p>The number of static fields is inferred from {@code data.dataValues.size()};
@@ -88,7 +88,7 @@ public class NonparametricSampler<T extends RelaxDataValue> extends WeightSample
      *
      * @param data the relaxation data to be resampled
      */
-    public NonparametricSampler(MolDataValues<T> data) {
+    public AmideNonparametricSampler(MolDataValues<T> data) {
         super(data);
         iterator = generateIterator();
     }
@@ -184,7 +184,7 @@ public class NonparametricSampler<T extends RelaxDataValue> extends WeightSample
             getSelectionsRow(pH)
         };
 
-        double[] weights = new double[getNValues()];
+        double[] weights = new double[getNSpectralDensities()];
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < getNFields(); j++) {
                 weights[selections[i][j] * 3 + i] += 1.0;
