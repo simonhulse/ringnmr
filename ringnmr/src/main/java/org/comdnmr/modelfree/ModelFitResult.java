@@ -1,10 +1,11 @@
 package org.comdnmr.modelfree;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 
 import org.nmrfx.chemistry.relax.OrderPar;
 
-public record ModelFitResult(OrderPar orderPar, double[][] replicateData, Double validationValue) {
+public record ModelFitResult(OrderPar orderPar, double[][] replicateData, Double validationValue, double[] replicateTimes) {
 
     public String toToml(boolean includeReplicates) {
         StringBuilder builder = new StringBuilder("[fit_result]\n");
@@ -40,6 +41,15 @@ public record ModelFitResult(OrderPar orderPar, double[][] replicateData, Double
                 builder.append(String.format("    %s,%n", Arrays.toString(replicateData[i])));
             }
             builder.append("]");
+        }
+
+        if (replicateTimes != null) {
+            StringJoiner joiner = new StringJoiner(", ", "[", "]");
+            for (double t : replicateTimes) {
+                joiner.add(String.format("%.6f", t));
+            }
+            builder.append("\n\n[timing]\n");
+            builder.append(String.format("replicate_times_ms = %s", joiner));
         }
 
         return builder.toString();
