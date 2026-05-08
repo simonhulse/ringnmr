@@ -34,7 +34,8 @@ public class MFModelIso2sf extends MFModelIso2s {
     private static final double TAU_PRIME = 30.0e-12;
 
     double tauF;
-    double complexityS = 0.0;
+    double complexityS2F = 0.0;
+    double complexityS2S = 0.0;
     double complexityTauF = 0.0;
     double complexityTauS = 0.0;
 
@@ -102,7 +103,8 @@ public class MFModelIso2sf extends MFModelIso2s {
             js[index++] = tauMTimesPt4 * (term1 + term2 + term3 + term4);
         }
 
-        complexityS = Math.abs(1.0 - sf2) + Math.abs(1.0 - ss2);
+        complexityS2F = Math.abs(1.0 - sf2);
+        complexityS2S = Math.abs(1.0 - ss2);
         complexityTauF = Math.log10((tauF + TAU_PRIME) / TAU_PRIME);
         complexityTauS = Math.log10((tauS + TAU_PRIME) / TAU_PRIME);
 
@@ -136,8 +138,13 @@ public class MFModelIso2sf extends MFModelIso2s {
     }
 
     @Override
-    public double getComplexityS() {
-        return complexityS;
+    public double getComplexityS2F() {
+        return complexityS2F;
+    }
+
+    @Override
+    public double getComplexityS2S() {
+        return complexityS2S;
     }
 
     @Override

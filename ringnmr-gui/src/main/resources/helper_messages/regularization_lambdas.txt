@@ -1,3 +1,3 @@
-The λ-values specify the magntiude of influence of the regularizing terms in the cost function. Larger values will more aggressively bias the optimizer to find solutions featuring simpler motional models. λ(S²) places the same scaling on the regularizing terms for both S²f and S²s.
+The λ-values specify the magnitude of influence of the regularizing terms in the cost function. Larger values will more aggressively bias the optimizer to find solutions featuring simpler motional models. λ(S²f) and λ(S²s) independently control the regularization strength for the fast and slow order parameters respectively.
 
 Must be positive decimals. As a rule-of-thumb, these should be kept below 1.0.

@@ -62,7 +62,11 @@ public abstract class MFModel {
         return 0.0;
     }
 
-    public double getComplexityS() {
+    public double getComplexityS2F() {
+        return 0.0;
+    }
+
+    public double getComplexityS2S() {
         return 0.0;
     }
 

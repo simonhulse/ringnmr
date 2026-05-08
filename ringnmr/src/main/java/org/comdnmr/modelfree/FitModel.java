@@ -39,7 +39,8 @@ public abstract class FitModel implements BasicFitter {
     boolean bayesian = false;
     boolean fitExchange = false;
     double tauFraction = 0.25;
-    double lambdaS = 0.0;
+    double lambdaS2F = 0.0;
+    double lambdaS2S = 0.0;
     double lambdaTauF = 0.0;
     double lambdaTauS = 0.0;
     boolean useLambda = false;
@@ -209,8 +210,12 @@ public abstract class FitModel implements BasicFitter {
         fitTau = value;
     }
 
-    public void setLambdaS(double value) {
-        this.lambdaS = value;
+    public void setLambdaS2F(double value) {
+        this.lambdaS2F = value;
+    }
+
+    public void setLambdaS2S(double value) {
+        this.lambdaS2S = value;
     }
 
     public void setLambdaTauF(double value) {
@@ -226,7 +231,7 @@ public abstract class FitModel implements BasicFitter {
     }
 
     public boolean useLambda() {
-        return useLambda && (lambdaS > 1.0e-8 || lambdaTauF > 1.0e-8 || lambdaTauS > 1.0e-8);
+        return useLambda && (lambdaS2F > 1.0e-8 || lambdaS2S > 1.0e-8 || lambdaTauF > 1.0e-8 || lambdaTauS > 1.0e-8);
     }
 
     public void setFitJ(boolean value) {
