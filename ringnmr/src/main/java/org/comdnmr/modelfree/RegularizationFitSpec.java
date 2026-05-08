@@ -241,13 +241,10 @@ public class RegularizationFitSpec extends FitSpec {
     /** Returns the slow-correlation-time regularization strength. */
     double getLambdaTauS() { return lambdaTauS; }
 
-    // All lower bounds set to zero so regularization acts as a soft constraint
-    // rather than relying on hard box bounds. Revisit if hard bounds are needed.
-    //
-    // @Override
-    // protected double[] getLower(MFModelIso model) {
-    //     return new double[model.getNPars()];
-    // }
+    @Override
+    protected double[] getLower(MFModelIso model) {
+        return new double[model.getNPars()];
+    }
 
     /**
      * {@inheritDoc}
