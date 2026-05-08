@@ -293,8 +293,10 @@ public class ConventionalFitSpec extends FitSpec {
             // Perform bootstrapping to estimate parameter errors
             double[][] parameters = new double[nParameters][nReplicates];
             double[][] weights = new double[nWeights][nReplicates];
+            double[] currentReplicateTimes = new double[nReplicates];
             BootstrapSampler<? extends RelaxDataValue> sampler = getBootstrapSampler(data);
             for (int i = 0; i < nReplicates; i++) {
+                long startNs = System.nanoTime();
                 MolDataValues<? extends RelaxDataValue> replicateData = sampler.sample();
                 relaxFit.setRelaxData(key, replicateData);
                 Score replicateScore = runFit(relaxFit, model);
@@ -302,6 +304,7 @@ public class ConventionalFitSpec extends FitSpec {
                 double[] replicateWeights = replicateData.getWeights();
                 for (int k = 0; k < nParameters; k++) parameters[k][i] = replicateParameters[k];
                 for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
+                currentReplicateTimes[i] = (System.nanoTime() - startNs) / 1_000_000.0;
             }
 
             String modelName = model.getName();
@@ -334,7 +337,7 @@ public class ConventionalFitSpec extends FitSpec {
                     fitParameters,
                     fitErrors
                 );
-                result = Optional.of(new ModelFitResult(bestOrderPar, parameters, null));
+                result = Optional.of(new ModelFitResult(bestOrderPar, parameters, null, currentReplicateTimes));
             }
         }
 
