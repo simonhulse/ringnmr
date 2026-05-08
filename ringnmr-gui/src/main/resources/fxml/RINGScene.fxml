@@ -8,8 +8,13 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-<?import org.comdnmr.gui.XYPlotDataPane?>
+
 <?import org.controlsfx.control.StatusBar?>
+
+<?import org.comdnmr.gui.ValidatedDecimalTextField?>
+<?import org.comdnmr.gui.ValidatedIntegerTextField?>
+<?import org.comdnmr.gui.XYPlotDataPane?>
+
 <BorderPane styleClass="mainFxmlClass"
             xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
             prefWidth="1024" prefHeight="900"
@@ -239,7 +244,7 @@
                                 </HBox>
                             </VBox>
                         </Tab>
-                        <Tab text="ModelFree" closable="false">
+                        <Tab fx:id="modelFreeTab" text="Model-free" closable="false">
                             <VBox HBox.hgrow="ALWAYS" spacing="3">
                                 <ToolBar>
                                     <MenuButton text="Actions">
@@ -251,72 +256,10 @@
                                                       onAction="#calculateSpectralDensities"/>
                                             <MenuItem text="Save Independent Spectral Densities"
                                                       onAction="#saveIndependentSpectralDensities"/>
-
                                         </items>
                                     </MenuButton>
                                     <MenuButton fx:id="relaxSetMenu" text="Fields"/>
                                 </ToolBar>
-                                <Accordion>
-                                    <panes>
-                                        <TitledPane text="Model Selection">
-                                            <VBox spacing="10">
-                                                <GridPane fx:id="modelBox" hgap="20" vgap="5">
-                                                </GridPane>
-                                                <HBox spacing="10">
-                                                    <CheckBox text="Use Lambda: " fx:id="lambdaCheckBox"/>
-                                                    <CheckBox text="Fit Js: " fx:id="fitJCheckBox"/>
-                                                    <CheckBox text="Use RQ: " fx:id="useRQCheckBox" selected="true"/>
-                                                </HBox>
-                                                <GridPane>
-                                                    <children>
-                                                        <Label text="S" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                                                        <Slider fx:id="sLambdaSlider" prefWidth="150"
-                                                                GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                                                        <Label fx:id="sLambdaLabel" prefWidth="50"
-                                                               GridPane.columnIndex="2" GridPane.rowIndex="0"/>
-                                                        <Label text="Tau" GridPane.columnIndex="0"
-                                                               GridPane.rowIndex="1"/>
-                                                        <Slider fx:id="tauLambdaSlider" prefWidth="150"
-                                                                GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                                                        <Label fx:id="tauLambdaLabel" prefWidth="50"
-                                                               GridPane.columnIndex="2" GridPane.rowIndex="1"/>
-                                                    </children>
-                                                </GridPane>
-                                            </VBox>
-                                        </TitledPane>
-                                        <TitledPane text="Constraints">
-                                            <VBox spacing="10">
-                                                <HBox spacing="10">
-                                                    <Label text="Tau Target" prefWidth="100"/>
-                                                    <TextField fx:id="tauField" prefWidth="60"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="Tau Range" prefWidth="100"/>
-                                                    <Slider fx:id="tauFractionSlider" prefWidth="150"/>
-                                                    <Label fx:id="tauFractionLabel" prefWidth="50"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="T2 Limit  " prefWidth="100"/>
-                                                    <Slider fx:id="t2LimitSlider" prefWidth="150"/>
-                                                    <Label fx:id="t2LimitLabel" prefWidth="50"/>
-                                                </HBox>
-                                            </VBox>
-                                        </TitledPane>
-                                        <TitledPane text="Bootstrap">
-                                            <VBox spacing="10">
-                                                <HBox spacing="10">
-                                                    <Label text="Bootstrap mode:"/>
-                                                    <ChoiceBox fx:id="bootStrapChoice"/>
-                                                </HBox>
-                                                <HBox spacing="10">
-                                                    <Label text="Bootstrap N" prefWidth="80"/>
-                                                    <Slider fx:id="nReplicatesSlider" prefWidth="150"/>
-                                                    <Label fx:id="bootstrapNLabel" prefWidth="50"/>
-                                                </HBox>
-                                            </VBox>
-                                        </TitledPane>
-                                    </panes>
-                                </Accordion>
                             </VBox>
                         </Tab>
                     </TabPane>

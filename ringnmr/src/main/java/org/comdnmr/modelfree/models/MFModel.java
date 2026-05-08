@@ -41,7 +41,7 @@ public abstract class MFModel {
     public abstract double[] calc(double[] omega);
 
     public double[] getParValues(double... parValues) {
-        int n = fitTau ? nPars + 1 : nPars;
+        int n = getNPars();
         int start = fitTau ? 0 : 1;
         double[] values = new double[n];
         System.arraycopy(parValues, start, values, 0, n);
@@ -66,7 +66,11 @@ public abstract class MFModel {
         return 0.0;
     }
 
-    public double getComplexityTau() {
+    public double getComplexityTauF() {
+        return 0.0;
+    }
+
+    public double getComplexityTauS() {
         return 0.0;
     }
 
@@ -75,7 +79,7 @@ public abstract class MFModel {
     }
 
     public int getNPars() {
-        return nPars;
+        return (fitTau) ? nPars + 1 : nPars;
     }
 
     public abstract int getNumber();

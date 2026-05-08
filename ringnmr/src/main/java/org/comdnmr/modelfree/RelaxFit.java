@@ -8,6 +8,8 @@ import org.apache.commons.math3.geometry.euclidean.threed.RotationConvention;
 import org.apache.commons.math3.geometry.euclidean.threed.RotationOrder;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.CMAESOptimizer;
+
 import org.comdnmr.data.Fitter;
 import static org.comdnmr.modelfree.RelaxFit.DiffusionType.ANISOTROPIC;
 import static org.comdnmr.modelfree.RelaxFit.DiffusionType.OBLATE;
@@ -31,7 +33,8 @@ import org.comdnmr.modelfree.models.MFModelIso2sf;
 public class RelaxFit {
 
     double lambdaS = 0.0;
-    double lambdaTau = 0.0;
+    double lambdaTauF = 0.0;
+    double lambdaTauS = 0.0;
     boolean useLambda = false;
     boolean logJMode = false;
     boolean fitJ = false;
@@ -102,12 +105,20 @@ public class RelaxFit {
         this.lambdaS = value;
     }
 
-    public double getLambdaTau() {
-        return useLambda ? lambdaTau : 0.0;
+    public double getLambdaTauF() {
+        return useLambda ? lambdaTauF : 0.0;
     }
 
-    public void setLambdaTau(double value) {
-        this.lambdaTau = value;
+    public void setLambdaTauF(double value) {
+        this.lambdaTauF = value;
+    }
+
+    public double getLambdaTauS() {
+        return useLambda ? lambdaTauS : 0.0;
+    }
+
+    public void setLambdaTauS(double value) {
+        this.lambdaTauS = value;
     }
 
     public void setUseLambda(boolean value) {
@@ -115,15 +126,20 @@ public class RelaxFit {
     }
 
     public boolean useLambda() {
-        return useLambda && (lambdaS > 1.0e-8 || lambdaTau > 1.0e-8);
+        return useLambda && (lambdaS > 1.0e-8 || lambdaTauF > 1.0e-8 || lambdaTauS > 1.0e-8);
     }
 
     public static double[] getDValues(double isoD) {
         return new double[]{0.75 * isoD, isoD, 1.25 * isoD};
     }
 
-    public void setRelaxData(Map<String, MolDataValues> molDataValues) {
-        this.molDataValues = molDataValues;
+    @SuppressWarnings("unchecked")
+    public void setRelaxData(Map<String, ? extends MolDataValues> molDataValues) {
+        this.molDataValues = (Map<String, MolDataValues>) molDataValues;
+    }
+    public void setRelaxData(String key, MolDataValues data) {
+        Map<String, MolDataValues> map = new HashMap<>() {{ put(key, data); }};
+        molDataValues = map;
     }
 
     public void setDiffusionType(DiffusionType type) {
@@ -404,13 +420,15 @@ public class RelaxFit {
            System.out.printf("%11.5g %11.5g\n",Math.sqrt(sumSq/jCalc.length), Math.sqrt(sumSqNW/jCalc.length));
        }
         double complexityS = testModel.getComplexityS();
-        double complexityTau = testModel.getComplexityTau();
-        return new double[]{sumSq, complexityS, complexityTau, nValues};
+        double complexityTauF = testModel.getComplexityTauF();
+        double complexityTauS = testModel.getComplexityTauS();
+        return new double[]{sumSq, complexityS, complexityTauF, complexityTauS, jCalc.length};
     }
 
-    double[] calcDeltaSqR(MolDataValues molData, double[] resPars, MFModel testModel) {
+    double[] calcDeltaSqR(MolDataValues<?> molData, double[] resPars, MFModel testModel) {
         double sumComplexityS = 0.0;
-        double sumComplexityTau = 0.0;
+        double sumComplexityTauF = 0.0;
+        double sumComplexityTauS = 0.0;
         double sumSq = 0.0;
         int nPar = 0;
         for (RelaxDataValue value : molData.getData()) {
@@ -418,7 +436,8 @@ public class RelaxFit {
             RelaxEquations relaxObj = dValue.relaxObj;
             double[] J = testModel.calc(relaxObj.wValues, resPars);
             sumComplexityS += testModel.getComplexityS();
-            sumComplexityTau += testModel.getComplexityTau();
+            sumComplexityTauF += testModel.getComplexityTauF();
+            sumComplexityTauS += testModel.getComplexityTauS();
             double r1 = relaxObj.R1(J);
             // fixme rEx should be field dependent
             double rEx = testModel.includesEx() ? resPars[resPars.length - 1] : 0.0;
@@ -428,7 +447,7 @@ public class RelaxFit {
             sumSq += delta2;
             nPar += 3;
         }
-        return new double[]{sumSq, sumComplexityS, sumComplexityTau, nPar};
+        return new double[]{sumSq, sumComplexityS, sumComplexityTauF, sumComplexityTauS, nPar};
     }
 
     double[] calcDeltaSq(MolDataValues molData, double[] resPars, MFModel testModel, boolean report) {
@@ -449,7 +468,8 @@ public class RelaxFit {
         int nComplex = 0;
         boolean parsOK = true;
         double sumComplexityS = 0.0;
-        double sumComplexityTau = 0.0;
+        double sumComplexityTauF = 0.0;
+        double sumComplexityTauS = 0.0;
         for (MolDataValues molData : molDataValues.values()) {
             MFModel testModel = molData.getTestModel();
             double[] resPars;
@@ -464,35 +484,38 @@ public class RelaxFit {
             double[] resResult = calcDeltaSq(molData, resPars, testModel, report);
             sumSq += resResult[0];
             sumComplexityS += resResult[1];
-            sumComplexityTau += resResult[2];
+            sumComplexityTauF += resResult[2];
+            sumComplexityTauS += resResult[3];
             if (fitJ) {
                 nComplex++;
             } else {
                 nComplex += molData.getData().size();
             }
-            n += (int) Math.round(resResult[3]);
+            n += (int) Math.round(resResult[4]);
 
             if (!testModel.checkParConstraints()) {
                 parsOK = false;
             }
         }
         double avgComplexityS = sumComplexityS / nComplex;
-        double avgComplexityTau = sumComplexityTau / nComplex;
+        double avgComplexityTauF = sumComplexityTauF / nComplex;
+        double avgComplexityTauS = sumComplexityTauS / nComplex;
         Score score;
         if (keepPars) {
-            score = new Score(sumSq, n, pars.length, parsOK, avgComplexityS, avgComplexityTau, pars.clone());
+            score = new Score(sumSq, n, pars.length, parsOK, avgComplexityS, avgComplexityTauF, avgComplexityTauS, pars.clone());
         } else {
-            score = new Score(sumSq, n, pars.length, parsOK, avgComplexityS, avgComplexityTau);
+            score = new Score(sumSq, n, pars.length, parsOK, avgComplexityS, avgComplexityTauF, avgComplexityTauS);
         }
         return score;
     }
 
+    @SuppressWarnings("unchecked")
     public Map<String, MolDataValues> genBootstrap(Random random, MFModel model, double[] pars) {
         var newMolDataValues = new HashMap<String, MolDataValues>();
 
         for (var entry : molDataValues.entrySet()) {
             MolDataValues molData = entry.getValue();
-            MolDataValues newMolData = new MolDataValues(molData.atom, molData.vector);
+            MolDataValues newMolData = molData.createEmpty();
             newMolData.setTestModel(model);
             newMolDataValues.put(entry.getKey(), newMolData);
             MFModel testModel = newMolData.getTestModel();
@@ -508,17 +531,17 @@ public class RelaxFit {
 
             for (var value : molData.getData()) {
                 if (value instanceof R1R2NOEDataValue dValue) {
-                    randomize(random, testModel, newMolData, dValue,resPars);
+                    randomize(random, testModel, (MolDataValues<R1R2NOEDataValue>) newMolData, dValue, resPars);
                 } else {
                     var dValue = (DeuteriumDataValue) value;
-                    randomize(random, testModel, newMolData, dValue,resPars);
+                    randomize(random, testModel, (MolDataValues<DeuteriumDataValue>) newMolData, dValue, resPars);
                 }
             }
         }
         return newMolDataValues;
     }
 
-    private void randomize(Random random, MFModel testModel, MolDataValues newMolData, R1R2NOEDataValue dValue, double[] resPars) {
+    private void randomize(Random random, MFModel testModel, MolDataValues<R1R2NOEDataValue> newMolData, R1R2NOEDataValue dValue, double[] resPars) {
         RelaxEquations relaxObj = dValue.relaxObj;
         double[] valJ = testModel.calc(relaxObj.wValues, resPars);
         double r1 = relaxObj.R1(valJ);
@@ -528,7 +551,7 @@ public class RelaxFit {
         dValue.randomize(newMolData, r1, r2, noe, random, 1.0);
     }
 
-    private void randomize(Random random, MFModel testModel, MolDataValues newMolData, DeuteriumDataValue dValue, double[] resPars) {
+    private void randomize(Random random, MFModel testModel, MolDataValues<DeuteriumDataValue> newMolData, DeuteriumDataValue dValue, double[] resPars) {
         RelaxEquations relaxObj = dValue.relaxObj;
         double[] J = testModel.calc(relaxObj.wValues, resPars);
         double r1 = relaxObj.R1_D(J);
@@ -541,7 +564,7 @@ public class RelaxFit {
 
     public double value(double[] pars, double[][] values) {
         var score = score(pars, false);
-        return score.value(getLambdaS(), getLambdaTau());
+        return score.value(getLambdaS(), getLambdaTauF(), getLambdaTauS());
     }
 
     public double valueMultiResidue(double[] pars, double[][] values) {
@@ -557,8 +580,8 @@ public class RelaxFit {
             System.arraycopy(pars, parStart, resPars, 1, nResPars);
             parStart += nResPars;
 
-            for (RelaxDataValue value : molData.getData()) {
-                var dValue = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                var dValue = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
                 double[] valJ = testModel.calc(relaxObj.wValues, resPars);
                 double r1 = relaxObj.R1(valJ);
@@ -596,10 +619,10 @@ public class RelaxFit {
         int n = 0;
         for (MolDataValues molData : molDataValues.values()) {
             MFModel model = molData.getTestModel();
-            for (RelaxDataValue value : molData.getData()) {
-                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
-                double[] v = molData.vector;
+                double[] v = molData.getVector();
                 int nModelPars = model.getNPars();
                 double[] resPars = new double[nModelPars + nDiffPars];
                 System.arraycopy(pars, 0, resPars, 0, nDiffPars);
@@ -634,17 +657,17 @@ public class RelaxFit {
         int modelNum = 1;
         int nDiffPars = diffusionType.getNDiffusionPars() + diffusionType.getNAnglePars();
         for (MolDataValues molData : molDataValues.values()) {
-            for (RelaxDataValue value : molData.getData()) {
-                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) value;
+            for (Object rawValue : molData.getData()) {
+                R1R2NOEDataValue dValue  = (R1R2NOEDataValue) rawValue;
                 RelaxEquations relaxObj = dValue.relaxObj;
-                double[] v = molData.vector;
+                double[] v = molData.getVector();
                 double[] resPars = new double[nParsPerModel[modelNum] + nDiffPars];
                 System.arraycopy(pars, 0, resPars, 0, nDiffPars);
                 resPars[resPars.length - 1] = 1.0; //Model 0: S2 = 1.0, all others null.
                 double[] valJ = getJDiffusion(resPars, relaxObj, modelNum, v, valD, valVT);
                 double rhoExp = dValue.calcExpRho(valJ);
                 double rhoPred = dValue.calcPredRho(valJ);
-                System.out.println(rhoExp + " " + rhoPred + " " + (rhoExp - rhoPred) + " " + molData.specifier);
+                System.out.println(rhoExp + " " + rhoPred + " " + (rhoExp - rhoPred) + " " + molData.getSpecifier());
             }
         }
     }

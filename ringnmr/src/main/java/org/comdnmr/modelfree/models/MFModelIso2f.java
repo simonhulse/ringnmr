@@ -53,21 +53,30 @@ public class MFModelIso2f extends MFModelIso1f {
 
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
-        int j = 0;
+        double tauM = 1.0e-9 * this.tauM;
+        double tauF = 1.0e-9 * this.tauF;
         double ss2 = this.ss2;
         double sf2 = this.sf2 / sN;
         double s2 = sf2 * ss2;
-        for (double omega : omegas) {
-            omega *= 1.0e-9;
-            double omega2 = omega * omega;
-            double tauf = tauM * tauF / (tauM + tauF);
-            double value1 = s2 * tauM / (1.0 + omega2 * tauM * tauM);
-            double value2 = (ss2 - s2) * (tauf) / (1.0 + omega2 * tauf * tauf);
 
-            J[j++] = 0.4e-9 * (value1 + value2);
+        double tauMTimesPt4 = 0.4 * tauM;
+        double tauM2 = tauM * tauM;
+        double tauF2 = tauF * tauF;
+        double tauMPlusTauF = tauM + tauF;
+        double tauMPlusTauF2 = tauMPlusTauF * tauMPlusTauF;
+        double tauM2TimesTauF2 = tauM2 * tauF2;
+
+        double[] js = new double[omegas.length];
+        int index = 0;
+        for (double omega : omegas) {
+            double omega2 = omega * omega;
+            double term1 = s2 / (1.0 + omega2 * tauM2);
+            double term2 = (ss2 - s2) * (
+                (tauF * tauMPlusTauF) / (omega2 * tauM2TimesTauF2 + tauMPlusTauF2)
+            );
+            js[index++] = tauMTimesPt4 * (term1 + term2);
         }
-        return J;
+        return js;
     }
 
     @Override
@@ -92,13 +101,7 @@ public class MFModelIso2f extends MFModelIso1f {
     @Override
     public double[] getStandardPars(double[] pars) {
         pars(pars);
-        double[] stdPars = new double[5];
-        stdPars[0] = tauM;
-        stdPars[1] = sf2;
-        stdPars[2] = tauF;
-        stdPars[3] = ss2;
-        stdPars[4] = 0.0;
-        return stdPars;
+        return createStandardPars(sf2, tauF, ss2, 0.0);
     }
 
     public double[] calc(double[] omegas, double s2, double tauF, double sf2) {

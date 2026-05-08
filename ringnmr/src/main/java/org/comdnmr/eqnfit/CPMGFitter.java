@@ -167,7 +167,7 @@ public class CPMGFitter implements EquationFitter {
     public List<String> getEquationNameList() {
         return getEquationNames();
     }
-    
+
     @Override
     public String getExpType() {
         return expType;
@@ -175,7 +175,6 @@ public class CPMGFitter implements EquationFitter {
 
     public static List<String> getEquationNames() {
         List<String> activeEquations = CoMDPreferences.getActiveCPMGEquations();
-        System.out.println(activeEquations);
         return activeEquations;
     }
 

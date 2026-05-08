@@ -33,7 +33,11 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-plugin-api</artifactId>
+<<<<<<< HEAD
             <version>11.4.38</version>
+=======
+            <version>11.4.38-SNAPSHOT</version>
+>>>>>>> mffit
         </dependency>
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
@@ -112,7 +116,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>1.2.1</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <id>fixFilters</id>

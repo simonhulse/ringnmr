@@ -1,0 +1,3 @@
+Defines the lower and upper bounds for τm for fitting. Given an initial guess of τm0 (either hard-coded or estimated), the bounds will be set to [(1-f)τm0, (1+f)τm0], where f is the fraction.
+
+Must be between 0.0 and 1.0.

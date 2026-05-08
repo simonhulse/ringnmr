@@ -163,7 +163,6 @@ public class DiffusionPars {
      * the SI of Berlin K.; Longhini, A.; Dayie, T. K. and Fushman, D., J.
      * Biomol NMR, 2013.
      *
-     * @param dDiff double[]. The d array.
      * @param tauLoc double. The internal correlation time.
      * @return double[]. The e array.
      */

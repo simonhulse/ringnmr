@@ -30,6 +30,9 @@ import java.util.List;
  * @author brucejohnson
  */
 public abstract class MFModelIso extends MFModel {
+
+    private static final String[] MODEL_NAMES = {"1", "1f", "1s", "2s", "2sf", "1sf"};
+
     double sN = 1.0;
     double tauM;
     double rEX;
@@ -52,6 +55,10 @@ public abstract class MFModelIso extends MFModel {
 
     public MFModelIso() {
         this(true, 0.0, 0.0, false);
+    }
+
+    public static String[] getAllModelNames() {
+        return MODEL_NAMES;
     }
 
     public List<String> getAllParNames(String... pars) {
@@ -92,8 +99,26 @@ public abstract class MFModelIso extends MFModel {
 
     public abstract double[] getStart();
 
-    public abstract double[] getStandardPars(double[] pars);
+    protected double[] createStandardPars(double sf2, double tauf, double ss2, double taus) {
+        double[] pars;
+        int start;
+        if (fitTau) {
+            pars = new double[5];
+            pars[0] = tauM;
+            start = 1;
+        } else {
+            pars = new double[4];
+            start = 0;
+        }
+        pars[start] = sf2;
+        pars[start + 1] = tauf;
+        pars[start + 2] = ss2;
+        pars[start + 3] = taus;
 
+        return pars;
+    }
+
+    public abstract double[] getStandardPars(double[] pars);
 
     public static MFModelIso buildModel(String modelName, boolean fitTau,
                                         double tau, double tauFrac,
@@ -106,9 +131,8 @@ public abstract class MFModelIso extends MFModel {
             case "1", "D1" -> new MFModelIso1(fitTau, tau, tauFrac, fitExchange);
             case "1f", "D1f" -> new MFModelIso1f(fitTau, tau, tauFrac, fitExchange);
             case "1s", "D1s" -> new MFModelIso1s(fitTau, tau, tauFrac, fitExchange);
-            case "2s", "D2s" -> new MFModelIso2s(fitTau, tau, tauFrac, fitExchange);
-            case "2f", "D2f" -> new MFModelIso2f(fitTau, tau, tauFrac, fitExchange);
             case "1sf", "D1sf" -> new MFModelIso1sf(fitTau, tau, tauFrac, fitExchange);
+            case "2s", "D2s" -> new MFModelIso2s(fitTau, tau, tauFrac, fitExchange);
             case "2sf", "D2sf" -> new MFModelIso2sf(fitTau, tau, tauFrac, fitExchange);
             case "2sfx", "D2sfx" -> new MFModelIso2sf(fitTau, tau, tauFrac, fitExchange);
             default -> throw new IllegalArgumentException("Unknown model " + modelName);
@@ -117,7 +141,5 @@ public abstract class MFModelIso extends MFModel {
             model.setSScale(9.0);
         }
         return model;
-
     }
-
 }

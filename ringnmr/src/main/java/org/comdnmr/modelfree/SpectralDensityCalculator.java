@@ -70,15 +70,14 @@ public class SpectralDensityCalculator {
         }
     }
 
-    public static double[][] calcJR1R2NOE(List<RelaxDataValue> dataValues) {
+    public static double[][] calcJR1R2NOE(List<R1R2NOEDataValue> dataValues) {
         boolean useAverage = false;
         int nDataValues = dataValues.size();
         int stepSize = useAverage ? 2 : 3;
         int nFreq = useAverage ? 1 + stepSize * nDataValues : stepSize * nDataValues;
         double[][] result = new double[4][nFreq];
         int iField = 0;
-        for (RelaxDataValue value : dataValues) {
-            R1R2NOEDataValue relaxDataValue = (R1R2NOEDataValue) value;
+        for (R1R2NOEDataValue relaxDataValue : dataValues) {
             RelaxEquations relaxEq = relaxDataValue.relaxObj;
             double r1 = relaxDataValue.R1;
             double r2 = relaxDataValue.R2;
@@ -130,7 +129,7 @@ public class SpectralDensityCalculator {
         return result;
     }
 
-    public static int getNData(List<RelaxDataValue> dataValues) {
+    public static int getNData(List<? extends RelaxDataValue> dataValues) {
         int n = 0;
         if (!dataValues.isEmpty()) {
             boolean[] typeUsage;
@@ -150,7 +149,7 @@ public class SpectralDensityCalculator {
         return n;
     }
 
-    public static double[][] calcJDeuterium(List<RelaxDataValue> dataValues) {
+    public static double[][] calcJDeuterium(List<DeuteriumDataValue> dataValues) {
         double[][] result = null;
         if (!dataValues.isEmpty()) {
             List<Double> rValues = new ArrayList<>();
@@ -159,8 +158,7 @@ public class SpectralDensityCalculator {
             boolean doIndependent = false;
             boolean[] typeUsage = {useR1, useR2, useRQ, useRAP};
 
-            for (var value : dataValues) {
-                var dValue = (DeuteriumDataValue) value;
+            for (var dValue : dataValues) {
                 if (typeUsage[0]) {
                     rValues.add(dValue.R1);
                     errValues.add(dValue.R1err);

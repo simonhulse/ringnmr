@@ -53,18 +53,27 @@ public class MFModelIso1f extends MFModelIso1 {
 
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
+        double tauM = 1.0e-9 * this.tauM;
+        double tauF = 1.0e-9 * this.tauF;
         double sf2 = this.sf2 / sN;
-        int j = 0;
+
+        double tauMTimesPt4 = 0.4 * tauM;
+        double tauM2 = tauM * tauM;
+        double tauF2 = tauF * tauF;
+        double tauM2TimesTauF2 = tauM2 * tauF2;
+        double tauMPlusTauF = tauM + tauF;
+        double tauMPlusTauF2 = tauMPlusTauF * tauMPlusTauF;
+
+        int index = 0;
+        double[] js = new double[omegas.length];
         for (double omega : omegas) {
-            omega *= 1.0e-9;
             double omega2 = omega * omega;
-            double tauf = tauM * tauF / (tauM + tauF);
-            double value1 = sf2 * tauM / (1.0 + omega2 * tauM * tauM);
-            double value2 = (1.0 - sf2) * (tauf) / (1.0 + omega2 * tauf * tauf);
-            J[j++] = 0.4e-9 * (value1 + value2);
+            double term1 = sf2 / (1.0 + omega2 * tauM2);
+            double term2 = ((1.0 - sf2) * tauF * tauMPlusTauF) /
+                (omega2 * tauM2TimesTauF2 + tauMPlusTauF2);
+            js[index++] = tauMTimesPt4 * (term1 + term2);
         }
-        return J;
+        return js;
     }
 
     @Override
@@ -94,13 +103,7 @@ public class MFModelIso1f extends MFModelIso1 {
     @Override
     public double[] getStandardPars(double[] pars) {
         pars(pars);
-        double[] stdPars = new double[5];
-        stdPars[0] = tauM;
-        stdPars[1] = sf2;
-        stdPars[2] = tauF;
-        stdPars[3] = 1.0;
-        stdPars[4] = 0.0;
-        return stdPars;
+        return createStandardPars(sf2, tauF, 1.0, 0.0);
     }
 
     @Override
@@ -111,9 +114,9 @@ public class MFModelIso1f extends MFModelIso1 {
     @Override
     public double[] getStart() {
         if (includeEx) {
-            return getParValues(targetTau, 0.9, 0.015, 2.0);
+            return getParValues(targetTau, 0.5, 0.5 * SLOW_LIMIT, 2.0);
         } else {
-            return getParValues(targetTau, 0.9, 0.015);
+            return getParValues(targetTau, 0.5, 0.5 * SLOW_LIMIT);
         }
     }
 

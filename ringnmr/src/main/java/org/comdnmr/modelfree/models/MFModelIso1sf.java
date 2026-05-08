@@ -29,11 +29,13 @@ import java.util.List;
  */
 public class MFModelIso1sf extends MFModelIso2f {
     double tauS;
-    double complexityS = 0.0;
-    double complexityTau = 0.0;
 
-    public MFModelIso1sf(boolean fitTau, double targetTau, double tauFraction,
-                         boolean includeEx) {
+    public MFModelIso1sf(
+        boolean fitTau,
+        double targetTau,
+        double tauFraction,
+        boolean includeEx
+    ) {
         super(fitTau, targetTau, tauFraction, includeEx);
         nPars = includeEx ? 4 : 3;
     }
@@ -53,31 +55,45 @@ public class MFModelIso1sf extends MFModelIso2f {
 
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
-        int j = 0;
+        double tauM = 1.0e-9 * this.tauM;
+        double tauF = 1.0e-9 * this.tauF;
+        double tauS = 1.0e-9 * this.tauS;
         double ss2 = this.ss2;
         double sf2 = 1.0 / sN;
         double s2 = ss2 * sf2;
+
+        double tauMTimesPt4 = 0.4 * tauM;
+        double tauM2 = tauM * tauM;
+        double tauF2 = tauF * tauF;
+        double tauS2 = tauS * tauS;
+        double tauMPlusTauF = tauM + tauF;
+        double tauMPlusTauF2 = tauMPlusTauF * tauMPlusTauF;
+        double tauMPlusTauS = tauM + tauS;
+        double tauMPlusTauS2 = tauMPlusTauS * tauMPlusTauS;
+        double tauFTimesTauS = tauF * tauS;
+        double tauPrime = tauF * (tauM + tauS) + tauM * tauS;
+        double tauPrime2 = tauPrime * tauPrime;
+        double tauM2TimesTauF2 = tauM2 * tauF2;
+        double tauM2TimesTauS2 = tauM2 * tauS2;
+        double tauM2TimesTauF2TimesTauS2 = tauM2 * tauF2 * tauS2;
+
+        double[] js = new double[omegas.length];
+        int index = 0;
         for (double omega : omegas) {
-            omega *= 1.0e-9;
             double omega2 = omega * omega;
-            double vM = s2 * tauM / (1.0 + omega2 * tauM * tauM);
-            double vMS = sf2 * (1.0 - ss2) * (tauM * tauS * (tauM + tauS))
-                    / (tauM * tauM * tauS * tauS * omega2 + (tauM + tauS) * (tauM + tauS));
-            double vMF = (1.0 - sf2) * ss2 * (tauM * tauF * (tauM + tauF))
-                    / (tauM * tauM * tauF * tauF * omega2 + (tauM + tauF) * (tauM + tauF));
-            double tauMFS = tauF * (tauM + tauS) + tauM * tauS;
-            double vMFS = (1.0 - sf2) * (1.0 - ss2) * (tauF * tauM * tauS * tauMFS)
-                    / (tauF * tauF * tauM * tauM * tauS * tauS * omega2
-                    + tauMFS * tauMFS);
-            J[j++] = 0.4e-9 * (vM + vMS + vMF + vMFS);
+            double term1 = s2 / (1.0 + omega2 * tauM2);
+            double term2 = sf2 * (1.0 - ss2) * (
+                (tauS * tauMPlusTauS) / (omega2 * tauM2TimesTauS2 + tauMPlusTauS2)
+            );
+            double term3 = (1.0 - sf2) * ss2 * (
+                (tauF * tauMPlusTauF) / (omega2 * tauM2TimesTauF2 + tauMPlusTauF2)
+            );
+            double term4 = (1.0 - sf2) * (1.0 - ss2) * (
+                (tauFTimesTauS * tauPrime) / (omega2 * tauM2TimesTauF2TimesTauS2 + tauPrime2)
+            );
+            js[index++] = tauMTimesPt4 * (term1 + term2 + term3 + term4);
         }
-        complexityS
-                = Math.abs(1.0 - ss2);
-        complexityTau
-                = (Math.log10(tauS + 0.001) + 3.0)
-                + (Math.log10(tauF + 0.001) + 3.0);
-        return J;
+        return js;
     }
 
     @Override
@@ -119,17 +135,11 @@ public class MFModelIso1sf extends MFModelIso2f {
 
     @Override
     public double[] getStandardPars(double[] pars) {
-        return sortPars(pars);
-    }
-
-    @Override
-    public double getComplexityS() {
-        return complexityS;
-    }
-
-    @Override
-    public double getComplexityTau() {
-        return complexityTau;
+        double[] sortPars = sortPars(pars);
+        double tauF = sortPars[1];
+        double ss2 = sortPars[2];
+        double tauS = sortPars[3];
+        return createStandardPars(1.0, tauF, ss2, tauS);
     }
 
     @Override
@@ -148,9 +158,9 @@ public class MFModelIso1sf extends MFModelIso2f {
     @Override
     public double[] getStart() {
         if (includeEx) {
-            return getParValues(targetTau, 0.1, 0.9, 0.01, 2.0);
+            return getParValues(targetTau, SLOW_LIMIT / 2.0, 0.5, targetTau / 4.0, 2.0);
         } else {
-            return getParValues(targetTau, SLOW_LIMIT / 5.0, 0.9, SLOW_LIMIT * 5.0);
+            return getParValues(targetTau, SLOW_LIMIT / 2.0, 0.5, targetTau / 4.0);
         }
     }
 

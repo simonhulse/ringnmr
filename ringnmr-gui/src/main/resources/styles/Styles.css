@@ -78,3 +78,9 @@
 .comment {
 	-fx-fill: cadetblue;
 }
+
+.helper-icon {
+  -fx-text-fill: #007acc;
+  -fx-font-weight: bold;
+  -fx-cursor: hand;
+}

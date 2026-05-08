@@ -111,6 +111,19 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version> <!-- Check for the latest version -->
+                <configuration>
+                    <outputDirectory>${project.build.directory}/apidocs</outputDirectory>
+                    <source>17</source> <!-- Set the appropriate version for your project -->
+                    <author>true</author>
+                    <version>true</version>
+                    <additionalOptions>--allow-script-in-comments</additionalOptions>
+                    <header><![CDATA[<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>]]></header>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
@@ -132,7 +145,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>1.2.1</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <id>fixFilters</id>

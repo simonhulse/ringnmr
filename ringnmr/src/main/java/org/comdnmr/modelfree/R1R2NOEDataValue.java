@@ -5,7 +5,7 @@ import java.util.Random;
 import static org.comdnmr.modelfree.RelaxEquations.*;
 
 public class R1R2NOEDataValue extends RelaxDataValue {
-    final double NOE;
+    double NOE;
     final double NOEerr;
     double rhoError = 0.0;
 
@@ -17,12 +17,20 @@ public class R1R2NOEDataValue extends RelaxDataValue {
         this.NOEerr = noeError;
     }
 
-    public void randomize(MolDataValues molData, double r1, double r2,
+    public double getNOE() { return NOE; }
+
+    public double getNOEerr() { return NOEerr; }
+
+    @Override public double[] getObservables()       { return new double[]{R1, R2, NOE}; }
+    @Override public double[] getObservableErrors()  { return new double[]{R1err, R2err, NOEerr}; }
+    @Override public void setObservables(double[] v) { R1 = v[0]; R2 = v[1]; NOE = v[2]; }
+
+    public void randomize(MolDataValues<R1R2NOEDataValue> molData, double r1, double r2,
                           double noe, Random random, double scale) {
         double newR1 = r1 + random.nextGaussian() * scale * R1err;
         double newR2 = r2 + random.nextGaussian() * scale * R2err;
         double newNOE = noe + random.nextGaussian() * scale * NOEerr;
-        RelaxDataValue newValue = new R1R2NOEDataValue(molData, newR1, R1err,
+        R1R2NOEDataValue newValue = new R1R2NOEDataValue(molData, newR1, R1err,
                 newR2, R2err, newNOE, NOEerr, relaxObj);
         molData.addData(newValue);
     }

@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 import org.apache.commons.math3.optim.PointValuePair;
-import org.comdnmr.data.DataIO;
 import org.comdnmr.data.DynamicsSource;
 import org.comdnmr.modelfree.*;
 import org.comdnmr.modelfree.RelaxFit.DiffusionType;
@@ -20,7 +19,6 @@ import org.comdnmr.modelfree.models.*;
 import org.comdnmr.util.CoMDPreferences;
 import org.junit.Test;
 import org.junit.Assert;
-import org.nmrfx.chemistry.MoleculeFactory;
 
 /**
  *
@@ -49,7 +47,7 @@ public class DRefineTest {
                 v[0] = Double.valueOf(fields[2]);
                 v[1] = Double.valueOf(fields[3]);
                 v[2] = Double.valueOf(fields[4]);
-                MolDataValues molDataValue = new MolDataValues(atomSpecifier, v,
+                R1R2NOEMolDataValues molDataValue = new R1R2NOEMolDataValues(atomSpecifier, v,
                         dynamicsSourceFactory);
                 molValues.put(atomSpecifier, molDataValue);
             }
@@ -123,28 +121,6 @@ public class DRefineTest {
             return null;
         }
 
-    }
-
-    private Map<String, MolDataValues> loadDeuteriumTestData() {
-        File file = new File("src/test/data/val121gamma2no700.csv");
-        try {
-            DataIO.loadRelaxationTextFile(file);
-        } catch (IOException e) {
-            return null;
-        }
-        return FitDeuteriumModel.getData(false);
-    }
-
-    @Test
-    public void testDeuteriumD1() {
-        MoleculeFactory.clearAllMolecules();
-        MoleculeFactory.setActive(null);
-        var data = loadDeuteriumTestData();
-        FitDeuteriumModel fitDeuteriumModel = new FitDeuteriumModel();
-        fitDeuteriumModel.setTau(10.0);
-        var modelNames = List.of("1f");
-
-        fitDeuteriumModel.testModels(data,modelNames);
     }
 
     @Test

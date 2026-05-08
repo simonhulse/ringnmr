@@ -53,15 +53,22 @@ public class MFModelIso1 extends MFModelIso {
     public double spectralDensity(double s2, double omega, double tau) {
         return 0.4 * s2 / sN * tau / (1.0 + Math.pow(omega * tau, 2.0));
     }
+
     @Override
     public double[] calc(double[] omegas) {
-        double[] J = new double[omegas.length];
-        int j = 0;
+        double tauM = 1.0e-9 * this.tauM;
+        double sf2 = this.sf2 / sN;
+
+        double sf2TauMTimesPt4 = 0.4 * sf2 * tauM;
+        double tauM2 = tauM * tauM;
+
+        int index = 0;
+        double[] js = new double[omegas.length];
         for (double omega : omegas) {
-            omega *= 1.0e-9;
-            J[j++] = 1.0e-9 * spectralDensity(sf2, omega, tauM);
+            double omega2 = omega * omega;
+            js[index++] = sf2TauMTimesPt4 / (1.0 + omega2 * tauM2);
         }
-        return J;
+        return js;
     }
 
     @Override
@@ -82,13 +89,7 @@ public class MFModelIso1 extends MFModelIso {
     @Override
     public double[] getStandardPars(double[] pars) {
         pars(pars);
-        double[] stdPars = new double[5];
-        stdPars[0] = tauM;
-        stdPars[1] = sf2;
-        stdPars[2] = 0.0;
-        stdPars[3] = 1.0;
-        stdPars[4] = 00;
-        return stdPars;
+        return createStandardPars(sf2, 0.0, 1.0, 0.0);
     }
 
     public double[] calc(double[] omegas, double s2) {
@@ -99,9 +100,9 @@ public class MFModelIso1 extends MFModelIso {
     @Override
     public double[] getStart() {
         if (includeEx) {
-            return getParValues(targetTau, 0.9, 2.0);
+            return getParValues(targetTau, 0.5, 2.0);
         } else {
-            return getParValues(targetTau, 0.9);
+            return getParValues(targetTau, 0.5);
         }
     }
 
