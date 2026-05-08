@@ -1,6 +1,5 @@
 package org.comdnmr.modelfree;
 
-import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -314,15 +313,19 @@ public class RegularizationFitSpec extends FitSpec {
                     sf2 = 1.0; tauf = 0.0; ss2 = s;   taus = tau;
                 }
             } else {
-                // Two local motions: sort so that tauf ≤ taus
                 if (tau1 < TAU_THOLD) {
+                    // tau1 is instantaneous: assign it to the fast slot (Model 2s)
                     sf2 = s1; tauf = 0.0; ss2 = s2; taus = tau2;
                 } else if (tau2 < TAU_THOLD) {
+                    // tau2 is instantaneous: assign it to the fast slot (Model 2s)
                     sf2 = s2; tauf = 0.0; ss2 = s1; taus = tau1;
-                } else if (tau1 < tau2) {
-                    sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
                 } else {
-                    sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
+                    // Both timescales are resolvable: sort so that tauf < taus (Model 2sf)
+                    if (tau1 < tau2) {
+                        sf2 = s1; tauf = tau1; ss2 = s2; taus = tau2;
+                    } else {
+                        sf2 = s2; tauf = tau2; ss2 = s1; taus = tau1;
+                    }
                 }
             }
         } else {
@@ -392,7 +395,9 @@ public class RegularizationFitSpec extends FitSpec {
         BootstrapSampler<? extends RelaxDataValue> sampler = getBootstrapSampler(data);
 
         Score[] scores = new Score[nReplicates];
+        double[] replicateTimes = new double[nReplicates];
         for (int i = 0; i < nReplicates; i++) {
+            long startNs = System.nanoTime();
             MolDataValues<? extends RelaxDataValue> replicateData = sampler.sample();
             relaxFit.setRelaxData(key, replicateData);
             scores[i] = runFit(relaxFit, model);
@@ -400,13 +405,12 @@ public class RegularizationFitSpec extends FitSpec {
             double[] replicateWeights = replicateData.getWeights();
             for (int k = 0; k < nParameters; k++) parameters[k][i] = replicateParameters[k];
             for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
+            replicateTimes[i] = (System.nanoTime() - startNs) / 1_000_000.0;
         }
 
         Pair<double[], double[]> parameterEstimates = computeStatistics(parameters, weights);
         double[] fitParameters = parameterEstimates.getLeft();
-        System.out.printf("fitParameters:%n%s%n", Arrays.toString(fitParameters));
         double[] fitErrors = parameterEstimates.getRight();
-        System.out.printf("fitErrors:%n%s%n", Arrays.toString(fitErrors));
 
         orderParSetMap.computeIfAbsent(KEY, ky -> new OrderParSet(ky));
         // FIXME: the Score used here (scores[0]) is from the first replicate.
@@ -422,6 +426,6 @@ public class RegularizationFitSpec extends FitSpec {
             fitErrors
         );
 
-        return new ModelFitResult(orderPar, parameters, null);
+        return new ModelFitResult(orderPar, parameters, null, replicateTimes);
     }
 }

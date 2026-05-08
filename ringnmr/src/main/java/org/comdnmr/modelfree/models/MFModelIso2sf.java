@@ -63,8 +63,7 @@ public class MFModelIso2sf extends MFModelIso2s {
         double tauF = 1.0e-9 * this.tauF;
         double tauS = 1.0e-9 * this.tauS;
         double ss2 = this.ss2;
-        double sf2 = this.sf2 / sN;
-        double s2 = ss2 * sf2;
+        double sf2 = this.sf2;
 
         // TODO: Exactly the same as 1sf. Should think about DRY
         double tauMTimesPt4 = 0.4 * tauM;
@@ -86,17 +85,17 @@ public class MFModelIso2sf extends MFModelIso2s {
         int index = 0;
         for (double omega : omegas) {
             double omega2 = omega * omega;
-            double term1 = s2 / (1.0 + omega2 * tauM2);
-            double term2 = sf2 * (1.0 - ss2) * (
+            double term1 = ((sf2 / sN) * ss2) / (1.0 + omega2 * tauM2);
+            double term2 = (sf2 / sN) * (1.0 - ss2) * (
                 (tauS * tauMPlusTauS) / (omega2 * tauM2TimesTauS2 + tauMPlusTauS2)
             );
-            double term3 = (1.0 - sf2) * ss2 * (
+            double term3 = (1.0 - (sf2 / sN)) * ss2 * (
                 (tauF * tauMPlusTauF) / (omega2 * tauM2TimesTauF2 + tauMPlusTauF2)
             );
             // guard against division by zero error when tauf and taus are zero
             double term4 = 0.0;
             if (!(tauF < 1.0e-15 && tauS < 1.0e-15)) {
-                term4 = (1.0 - sf2) * (1.0 - ss2) * (
+                term4 = (1.0 - (sf2 / sN)) * (1.0 - ss2) * (
                     (tauFTimesTauS * tauPrime) / (omega2 * tauM2TimesTauF2TimesTauS2 + tauPrime2)
                 );
             }

@@ -162,7 +162,9 @@ public class BaggingFitSpec extends FitSpec {
         BootstrapSampler<? extends RelaxDataValue> sampler = getBootstrapSampler(data);
 
         Score[] bestScores = new Score[nReplicates];
+        double[] replicateTimes = new double[nReplicates];
         for (int i = 0; i < nReplicates; i++) {
+            long startNs = System.nanoTime();
             MolDataValues<? extends RelaxDataValue> replicateData = sampler.sample();
             relaxFit.setRelaxData(key, replicateData);
 
@@ -187,6 +189,7 @@ public class BaggingFitSpec extends FitSpec {
             double[] replicateWeights = replicateData.getWeights();
             for (int k = 0; k < nParameters; k++) parameters[k][i] = replicateParameters[k];
             for (int j = 0; j < nWeights; j++) weights[j][i] = replicateWeights[j];
+            replicateTimes[i] = (System.nanoTime() - startNs) / 1_000_000.0;
         }
 
         Pair<double[], double[]> parameterEstimates = computeStatistics(parameters, weights);
@@ -207,6 +210,6 @@ public class BaggingFitSpec extends FitSpec {
             fitErrors
         );
 
-        return new ModelFitResult(orderPar, parameters, null);
+        return new ModelFitResult(orderPar, parameters, null, replicateTimes);
     }
 }
