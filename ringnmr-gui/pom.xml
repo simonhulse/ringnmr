@@ -27,13 +27,17 @@
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-utils</artifactId>
-            <version>11.4.38-SNAPSHOT</version>
+            <version>11.4.38</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.nmrfx</groupId>
             <artifactId>nmrfx-plugin-api</artifactId>
+<<<<<<< HEAD
+            <version>11.4.38</version>
+=======
             <version>11.4.38-SNAPSHOT</version>
+>>>>>>> mffit
         </dependency>
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
