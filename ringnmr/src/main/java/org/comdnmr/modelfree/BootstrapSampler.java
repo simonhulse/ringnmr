@@ -17,9 +17,10 @@ import org.apache.commons.rng.simple.RandomSource;
  * <p>Two sub-hierarchies exist:
  * <ul>
  *   <li>{@link WeightSampler} (and its concrete subclasses
- *       {@link AmideNonparametricSampler}, {@link DeuteriumNonparametricSampler} and
- *       {@link BayesianSampler}) — resamples by assigning per-observation weights
- *       without modifying the measured values.</li>
+ *       {@link AmideNonparametricSampler}, {@link AmideBayesianSampler},
+ *       {@link DeuteriumNonparametricSampler} and {@link DeuteriumBayesianSampler}) —
+ *       resamples by assigning per-observation weights without modifying the measured
+ *       values.</li>
  *   <li>{@link ParametricSampler} — resamples by drawing new measured values from
  *       Gaussian distributions centred on the originals, using the reported
  *       experimental errors as standard deviations.</li>

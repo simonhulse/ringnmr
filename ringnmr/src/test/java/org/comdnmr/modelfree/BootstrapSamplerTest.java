@@ -180,7 +180,7 @@ public class BootstrapSamplerTest {
 
     @Test
     public void testAmideNonparametricSampler() {
-        AmideNonparametricSampler<R1R2NOEDataValue> sampler = new AmideNonparametricSampler<>(data);
+        AmideNonparametricSampler sampler = new AmideNonparametricSampler(data);
         int nIterations = 343;
         Set<Integer> weightSet = new HashSet<>();
         for (int i = 0; i < nIterations; i++) {
@@ -231,7 +231,7 @@ public class BootstrapSamplerTest {
 
     @Test
     public void testBayesianSampler() {
-        BayesianSampler<R1R2NOEDataValue> sampler = new BayesianSampler<>(data);
+        AmideBayesianSampler sampler = new AmideBayesianSampler(data);
 
         int nSamples = 100;
         for (int i = 0; i < nSamples; i++) {

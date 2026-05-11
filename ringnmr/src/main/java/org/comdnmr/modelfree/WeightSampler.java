@@ -14,7 +14,9 @@ import java.util.Arrays;
  * weighting equivalent to an unperturbed fit.
  *
  * @see AmideNonparametricSampler
- * @see BayesianSampler
+ * @see AmideBayesianSampler
+ * @see DeuteriumNonparametricSampler
+ * @see DeuteriumBayesianSampler
  */
 public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapSampler<T> {
 
