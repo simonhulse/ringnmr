@@ -1,27 +1,10 @@
 Specifies the means by which datasets are sampled for bootstrapping, in order to derive parameter errors, as well as values if bootstrap aggregation or regularization are used.
 
 Parametric
-Each bootstrap dataset comprises datapoints which have been derived from the original data by perturbing their values with noise. Each datapoint's noise value is sampled using a normal distribution whose standard deviation is given by the datapoint's error bar.
+Each bootstrap datapoint is derived from the original by perturbing its value with normally distributed noise, using the datapoint's error bar as the standard deviation.
 
 Nonparametric
-Bootstrap datasets are genreated by sampling from the original dataset with replacement. In effect, nonparametric bootstrapping involves weighting datapoints with integer weights (the sum of all weights will always equal the number of datapoints). There are a finite number of samples that can be generated using this method, depending on the moiety type and the fields that data were aquired at:
-
-Amide:
-2 fields → 3³ = 27
-3 fields → 7³ = 343
-4 fields → 19³ = 6859
-
-Deuterated Methyl:
-The number of bootstrap samples is related to the number of unique ω-values, which is based on the fields used. For a given field, spectral densities at 0, ωD and 2ωD are available. However, during the spectral density mapping, only a single point is generated for each UNIQUE ω value. The most unique ω-values possible for N fields is 2N + 1. However, if any of the fields differ by a factor of 2, then fewer unique ω values will be present.
-3 unique ω-values → 3
-4 unique ω-values → 7
-5 unique ω-values → 19
-6 unique ω-values → 51
-7 unique ω-values → 141
-8 unique ω-values → 393
-9 unique ω-values → 1107
-10 unique ω-values → 3139
-
+Datapoints are resampled with replacement using integer weights. Observations are resampled independently within each spectral-density frequency class. The total number of possible samples is finite and depends on the moiety type, number of fields, and (for deuterated methyl) field degeneracies. For large datasets this number may be prohibitively small — see [TODO: link to online docs] for details.
 
 Bayesian
-Bootstrap datasets are sampled by weighting datapoints using samples from a symmetric Dirichlet distribution.
+Datapoints are weighted using continuous samples drawn from symmetric Dirichlet distributions, one per spectral-density frequency class. Unlike nonparametric bootstrapping, this sampler has no upper limit on the number of samples.
