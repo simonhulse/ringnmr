@@ -97,6 +97,12 @@ public abstract class FitSpec {
     protected final boolean fixedSeed;
 
     /**
+     * J(0) computation strategy for amide ({@link MoietyType#AMIDE}) data.
+     * Ignored for {@link MoietyType#DEUTERATED_METHYL}.
+     */
+    protected final R1R2NOEMolDataValues.J0Mode j0Mode;
+
+    /**
      * Registry mapping human-readable method names to their corresponding
      * {@code FitSpec} subclass. Insertion order is preserved via
      * {@link LinkedHashMap}.
@@ -131,6 +137,7 @@ public abstract class FitSpec {
         this.nReplicates = builder.nReplicates;
         this.useMedian = builder.useMedian;
         this.fixedSeed = builder.fixedSeed;
+        this.j0Mode = builder.j0Mode;
     }
 
     /**
@@ -264,6 +271,7 @@ public abstract class FitSpec {
         builder.append(String.format("nReplicates = %d%n", nReplicates));
         builder.append(String.format("useMedian = %b%n", useMedian));
         builder.append(String.format("fixedSeed = %b%n", fixedSeed));
+        builder.append(String.format("j0Mode = \"%s\"%n", j0Mode.name().toLowerCase()));
         return builder;
     }
 
@@ -414,6 +422,9 @@ public abstract class FitSpec {
     protected RelaxFit initRelaxFit(String key, MolDataValues<?> data) {
         RelaxFit relaxFit = new RelaxFit();
         relaxFit.setFitJ(fitJ);
+        if (moietyType == MoietyType.AMIDE) {
+            ((R1R2NOEMolDataValues) data).setJ0Mode(j0Mode);
+        }
         relaxFit.setRelaxData(key, data);
         return relaxFit;
     }
@@ -601,6 +612,7 @@ public abstract class FitSpec {
         sb.append("r2Limit=").append(Double.doubleToLongBits(r2Limit)).append('|');
         sb.append("nReplicates=").append(nReplicates).append('|');
         sb.append("fixedSeed=").append(fixedSeed).append('|');
+        sb.append("j0Mode=").append(j0Mode == null ? "null" : j0Mode.name()).append('|');
 
         // Hook for subclasses
         appendSubclassState(sb);
@@ -750,6 +762,8 @@ public abstract class FitSpec {
         protected boolean useMedian = DEFAULT_USE_MEDIAN;
         // Added for use in the regularization paper; not used within RING.
         protected boolean fixedSeed = false;
+
+        protected R1R2NOEMolDataValues.J0Mode j0Mode = R1R2NOEMolDataValues.J0Mode.INDEPENDENT;
 
         // ── Default-value accessors ─────────────────────────────────────
 
@@ -955,6 +969,18 @@ public abstract class FitSpec {
         }
 
         /**
+         * Sets the J(0) computation strategy for amide data.
+         * Ignored when {@link #moietyType} is {@link MoietyType#DEUTERATED_METHYL}.
+         *
+         * @param j0Mode the J(0) mode; must not be {@code null}
+         * @return this builder
+         */
+        public T j0Mode(R1R2NOEMolDataValues.J0Mode j0Mode) {
+            this.j0Mode = Objects.requireNonNull(j0Mode, "j0Mode must not be null");
+            return self();
+        }
+
+        /**
          * Validates cross-field constraints. Called by {@link #build()} before
          * constructing the {@code FitSpec} instance.
          *
@@ -980,6 +1006,11 @@ public abstract class FitSpec {
             }
             if (r2Limit < 0) {
                 throw new IllegalStateException("r2Limit must be non-negative, got: " + r2Limit);
+            }
+            if (j0Mode != R1R2NOEMolDataValues.J0Mode.INDEPENDENT && moietyType == MoietyType.DEUTERATED_METHYL) {
+                throw new IllegalStateException(
+                    "j0Mode " + j0Mode + " is only applicable to AMIDE data"
+                );
             }
         }
 

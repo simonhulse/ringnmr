@@ -65,21 +65,23 @@ public class DeuteriumNonparametricSampler extends WeightSampler<DeuteriumDataVa
     public int getNBootstraps() { return nBootstraps; }
 
     @Override
-    protected double[] sampleWeights() {
+    public MolDataValues<DeuteriumDataValue> sample() {
         if (!iterator.hasNext()) {
             throw new NoSuchElementException(String.format(
                 "Maximum number of samples exceeded. " +
                 "This sampler cannot be sampled more than %d times.",
                 nBootstraps));
         }
-        int[] pair   = iterator.next();
+        int[] pair       = iterator.next();
         double[] weights = new double[getNSpectralDensities()];
         weights[0] = 1.0;
         int[] wd  = wdVectors.get(pair[0]);
         int[] w2d = w2dVectors.get(pair[1]);
         for (int i = 0; i < groups.wdIndices.length;  i++) weights[groups.wdIndices[i]]  = wd[i];
         for (int i = 0; i < groups.w2dIndices.length; i++) weights[groups.w2dIndices[i]] = w2d[i];
-        return weights;
+        MolDataValues<DeuteriumDataValue> copy = data.copy();
+        copy.setWeights(weights);
+        return copy;
     }
 
     /**

@@ -153,15 +153,22 @@ public class AmideNonparametricSampler extends WeightSampler<R1R2NOEDataValue> {
     }
 
     /**
-     * Returns the next weight vector from the pre-shuffled bootstrap index space.
+     * Returns the next bootstrap replicate, branching on the data's
+     * {@link R1R2NOEMolDataValues.J0Mode}.
      *
-     * <p>Each element of the returned array is the number of times the corresponding
-     * J(ω) observation was selected (0, 1, 2, or 3) across the three frequency draws.
+     * <p>For {@link R1R2NOEMolDataValues.J0Mode#INDEPENDENT} the copy carries a
+     * 3F weight vector (selection counts per J value per field).
      *
-     * @return per-observation bootstrap weights
+     * <p>For {@link R1R2NOEMolDataValues.J0Mode#AVERAGED_JACKKNIFE} the copy
+     * carries per-field Γ regression weights (via
+     * {@link R1R2NOEMolDataValues#setJ0Weights}) and a (1 + 2F) chi-sq weight
+     * vector with 1.0 at index 0 for the single J(0).
+     *
+     * @return a new {@link MolDataValues} representing the current bootstrap replicate
      * @throws NoSuchElementException if the sampler has been exhausted
      */
-    protected double[] sampleWeights() {
+    @Override
+    public MolDataValues<R1R2NOEDataValue> sample() {
         if (!iterator.hasNext()) {
             throw new NoSuchElementException(
                 String.format(
@@ -172,31 +179,39 @@ public class AmideNonparametricSampler extends WeightSampler<R1R2NOEDataValue> {
                 )
             );
         }
-        int index = iterator.next();
-
-        int nSel = getNSelections();
+        int index  = iterator.next();
+        int nSel   = getNSelections();
         int nSelSq = nSel * nSel;
-
-        // J(0) pointer
         int p0 = index / nSelSq;
         int r0 = index % nSelSq;
-        // J(wN) pointer
         int pN = r0 / nSel;
-        // J(0.87wH) pointer
         int pH = r0 % nSel;
 
-        int[][] selections = {
-            getSelectionsRow(p0),
-            getSelectionsRow(pN),
-            getSelectionsRow(pH)
-        };
+        R1R2NOEMolDataValues copy = (R1R2NOEMolDataValues) data.copy();
+        int nFields = getNFields();
 
-        double[] weights = new double[getNSpectralDensities()];
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < getNFields(); j++) {
-                weights[selections[i][j] * 3 + i] += 1.0;
+        if (((R1R2NOEMolDataValues) data).getJ0Mode() == R1R2NOEMolDataValues.J0Mode.AVERAGED_JACKKNIFE) {
+            double[] j0Weights = new double[nFields];
+            for (int j = 0; j < nFields; j++) j0Weights[getSelectionsRow(p0)[j]] += 1.0;
+            copy.setJ0Weights(j0Weights);
+
+            double[] chiSqWeights = new double[1 + 2 * nFields];
+            chiSqWeights[0] = 1.0;
+            for (int j = 0; j < nFields; j++) {
+                chiSqWeights[1 + getSelectionsRow(pN)[j] * 2]     += 1.0;
+                chiSqWeights[1 + getSelectionsRow(pH)[j] * 2 + 1] += 1.0;
             }
+            copy.setWeights(chiSqWeights);
+        } else {
+            int[][] selections = {getSelectionsRow(p0), getSelectionsRow(pN), getSelectionsRow(pH)};
+            double[] weights = new double[3 * nFields];
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < nFields; j++) {
+                    weights[selections[i][j] * 3 + i] += 1.0;
+                }
+            }
+            copy.setWeights(weights);
         }
-        return weights;
+        return copy;
     }
 }

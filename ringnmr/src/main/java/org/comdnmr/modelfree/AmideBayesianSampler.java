@@ -44,22 +44,49 @@ public class AmideBayesianSampler extends WeightSampler<R1R2NOEDataValue> {
     }
 
     /**
-     * Draws per-frequency-class Dirichlet weights and assembles them into a flat weight
-     * vector using the same index layout as {@link AmideNonparametricSampler}:
-     * {@code weights[fieldIndex * 3 + freqClass]}.
+     * Returns the next bootstrap replicate, branching on the data's
+     * {@link R1R2NOEMolDataValues.J0Mode}.
      *
-     * @return per-observation bootstrap weights
+     * <p>For {@link R1R2NOEMolDataValues.J0Mode#INDEPENDENT} the copy carries a
+     * 3F weight vector (Dirichlet draws scaled by F per frequency class).
+     *
+     * <p>For {@link R1R2NOEMolDataValues.J0Mode#AVERAGED_JACKKNIFE} the copy
+     * carries per-field Γ regression weights (via
+     * {@link R1R2NOEMolDataValues#setJ0Weights}) and a (1 + 2F) chi-sq weight
+     * vector with 1.0 at index 0 for the single J(0).
+     *
+     * @return a new {@link MolDataValues} representing the current bootstrap replicate
      */
     @Override
-    protected double[] sampleWeights() {
+    public MolDataValues<R1R2NOEDataValue> sample() {
         int nFields = getNFields();
-        double[] weights = new double[getNSpectralDensities()];
-        for (int i = 0; i < N_FREQ_CLASSES; i++) {
-            double[] w = dirichlets[i].sample();
+        double[] d0 = dirichlets[0].sample();
+        double[] d1 = dirichlets[1].sample();
+        double[] d2 = dirichlets[2].sample();
+
+        R1R2NOEMolDataValues copy = (R1R2NOEMolDataValues) data.copy();
+
+        if (((R1R2NOEMolDataValues) data).getJ0Mode() == R1R2NOEMolDataValues.J0Mode.AVERAGED_JACKKNIFE) {
+            double[] j0Weights = new double[nFields];
+            for (int k = 0; k < nFields; k++) j0Weights[k] = d0[k] * nFields;
+            copy.setJ0Weights(j0Weights);
+
+            double[] chiSqWeights = new double[1 + 2 * nFields];
+            chiSqWeights[0] = 1.0;
             for (int k = 0; k < nFields; k++) {
-                weights[k * 3 + i] = w[k] * nFields;
+                chiSqWeights[1 + k * 2]     = d1[k] * nFields;
+                chiSqWeights[1 + k * 2 + 1] = d2[k] * nFields;
             }
+            copy.setWeights(chiSqWeights);
+        } else {
+            double[] weights = new double[3 * nFields];
+            for (int k = 0; k < nFields; k++) {
+                weights[k * 3]     = d0[k] * nFields;
+                weights[k * 3 + 1] = d1[k] * nFields;
+                weights[k * 3 + 2] = d2[k] * nFields;
+            }
+            copy.setWeights(weights);
         }
-        return weights;
+        return copy;
     }
 }

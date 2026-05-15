@@ -48,10 +48,10 @@ public class DeuteriumBayesianSampler extends WeightSampler<DeuteriumDataValue> 
      * observations receive weights drawn from Dirichlet(1, …, 1), scaled to sum to
      * their respective group sizes.
      *
-     * @return per-observation bootstrap weights
+     * @return a new {@link MolDataValues} with bootstrap weights applied
      */
     @Override
-    protected double[] sampleWeights() {
+    public MolDataValues<DeuteriumDataValue> sample() {
         double[] weights = new double[getNSpectralDensities()];
         weights[0] = 1.0;
         if (wdDirichlet != null) {
@@ -64,6 +64,8 @@ public class DeuteriumBayesianSampler extends WeightSampler<DeuteriumDataValue> 
             int n = groups.w2dIndices.length;
             for (int i = 0; i < n; i++) weights[groups.w2dIndices[i]] = w[i] * n;
         }
-        return weights;
+        MolDataValues<DeuteriumDataValue> copy = data.copy();
+        copy.setWeights(weights);
+        return copy;
     }
 }
