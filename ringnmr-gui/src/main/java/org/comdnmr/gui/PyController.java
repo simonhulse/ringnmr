@@ -240,6 +240,10 @@ public class PyController implements Initializable {
     Label useRQLabel;
     CheckBox useRQCheckBox;
     HBox useRQHBox;
+
+    Label j0TreatmentLabel;
+    ChoiceBox<R1R2NOEMolDataValues.J0Mode> j0TreatmentChoiceBox;
+    HBox j0TreatmentHBox;
     // << Fitting method grid <<
 
     // >> TauM treatment panel >>
@@ -612,8 +616,17 @@ public class PyController implements Initializable {
         fitMethodHBox.getChildren().addAll(UiHelpers.createSpacer(), useMedianLabel, useMedianCheckBox);
         fittingMethodGrid.add(fitMethodHBox, 1, 1);
 
+        j0TreatmentLabel = new Label("J(0) treatment:");
+        fittingMethodGrid.add(j0TreatmentLabel, 0, 2);
+
+        j0TreatmentChoiceBox = new ChoiceBox<>();
+        j0TreatmentChoiceBox.getItems().addAll(R1R2NOEMolDataValues.J0Mode.values());
+        j0TreatmentChoiceBox.setValue(R1R2NOEMolDataValues.J0Mode.INDEPENDENT);
+        j0TreatmentHBox = UiHelpers.createElementWithHelper(j0TreatmentChoiceBox, "j0_treatment.txt");
+        fittingMethodGrid.add(j0TreatmentHBox, 1, 2);
+
         modelsLabel = new Label("Models:");
-        fittingMethodGrid.add(modelsLabel, 0, 2);
+        fittingMethodGrid.add(modelsLabel, 0, 3);
 
         modelBoxes = new LinkedHashMap<>();
         String[] modelNames = MFModelIso.getAllModelNames();
@@ -624,10 +637,10 @@ public class PyController implements Initializable {
             modelGridPane.add(box, i, 0);
         }
         modelContainer = UiHelpers.createElementWithHelper(modelGridPane, "model_free_models.txt");
-        fittingMethodGrid.add(modelContainer, 1, 2);
+        fittingMethodGrid.add(modelContainer, 1, 3);
 
         lambdasLabel = new Label("λ-values:");
-        fittingMethodGrid.add(lambdasLabel, 0, 2);
+        fittingMethodGrid.add(lambdasLabel, 0, 3);
         lambdaS2FTextField = new ValidatedDecimalTextField();
         HBox lambdaS2FBox = UiHelpers.createDefaultHBox(new Label("λ(S²f):"), lambdaS2FTextField);
         lambdaS2STextField = new ValidatedDecimalTextField();
@@ -644,7 +657,7 @@ public class PyController implements Initializable {
         lambdasGridPane.add(lambdaTauSBox, 3, 0);
         lambdasHBox = UiHelpers.createElementWithHelper(lambdasGridPane, "regularization_lambdas.txt");
 
-        fittingMethodGrid.add(lambdasHBox, 1, 2);
+        fittingMethodGrid.add(lambdasHBox, 1, 3);
 
         TitledPane pane = new TitledPane("Fitting Protocol", fittingMethodGrid);
         return pane;
@@ -1584,15 +1597,18 @@ public class PyController implements Initializable {
     private void updateMoietyType(MoietyType newValue) {
         BiConsumer<GridPane, Node> model1sfBoxAction;
         Consumer<Node> useRQAction;
+        BiConsumer<GridPane, Node> j0TreatmentAction;
 
         switch (newValue) {
             case AMIDE -> {
                 model1sfBoxAction = this::removeNode;
                 useRQAction = this::hideNode;
+                j0TreatmentAction = this::addNode;
             }
             case DEUTERATED_METHYL -> {
                 model1sfBoxAction = this::addNode;
                 useRQAction = this::showNode;
+                j0TreatmentAction = this::removeNode;
             }
             default -> throw new AssertionError("Unreachable");
         }
@@ -1600,6 +1616,8 @@ public class PyController implements Initializable {
         model1sfBoxAction.accept(modelGridPane, modelBoxes.get("1sf"));
         useRQAction.accept(useRQLabel);
         useRQAction.accept(useRQHBox);
+        j0TreatmentAction.accept(fittingMethodGrid, j0TreatmentLabel);
+        j0TreatmentAction.accept(fittingMethodGrid, j0TreatmentHBox);
     }
 
     private Class<? extends FitSpec> getFitSpecClass() {
@@ -1751,6 +1769,10 @@ public class PyController implements Initializable {
                 .r2Limit(r2LimitTextField.getValue().get());
         } else {
             fitSpecBuilder.fitTauM(false);
+        }
+
+        if (moietyTypeChoiceBox.getValue() == MoietyType.AMIDE) {
+            fitSpecBuilder.j0Mode(j0TreatmentChoiceBox.getValue());
         }
 
         FitSpec fitSpec = fitSpecBuilder

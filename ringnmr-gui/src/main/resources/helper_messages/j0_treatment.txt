@@ -1,0 +1,5 @@
+Controls how J(0) is estimated from relaxation data acquired at multiple static field strengths.
+
+Independent: one J(0) is derived per field, giving a 3F J-value vector (F = number of fields). This is the default treatment.
+
+Averaged Jackknife: a single J(0) is obtained from a no-intercept weighted least-squares regression of the Γ = R2 − 0.5·R1 − 0.454·σ values across all fields, with uncertainty estimated by jackknife resampling. The resulting J-value vector has length 1 + 2F. See Crawley and Palmer (2021) for details.

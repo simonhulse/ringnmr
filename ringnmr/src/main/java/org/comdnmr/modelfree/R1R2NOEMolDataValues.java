@@ -21,8 +21,14 @@ public class R1R2NOEMolDataValues extends MolDataValues<R1R2NOEDataValue> {
      * </ul>
      */
     public enum J0Mode {
-        INDEPENDENT,
-        AVERAGED_JACKKNIFE
+        INDEPENDENT("Independent"),
+        AVERAGED_JACKKNIFE("Averaged Jackknife");
+
+        private final String label;
+        J0Mode(String label) { this.label = label; }
+
+        @Override
+        public String toString() { return label; }
     }
 
     private J0Mode j0Mode = J0Mode.INDEPENDENT;
