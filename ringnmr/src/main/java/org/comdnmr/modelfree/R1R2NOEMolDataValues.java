@@ -37,4 +37,14 @@ public class R1R2NOEMolDataValues extends MolDataValues<R1R2NOEDataValue> {
     public MolDataValues<R1R2NOEDataValue> createEmpty() {
         return new R1R2NOEMolDataValues(atom, vector);
     }
+
+    @Override
+    public R1R2NOEMolDataValues copy() {
+        R1R2NOEMolDataValues copy = new R1R2NOEMolDataValues(atom, vector);
+        copy.setTestModel(getTestModel());
+        for (R1R2NOEDataValue dv : dataValues) {
+            copy.addData(new R1R2NOEDataValue(copy, dv.R1, dv.R1err, dv.R2, dv.R2err, dv.NOE, dv.NOEerr, dv.relaxObj));
+        }
+        return copy;
+    }
 }

@@ -38,25 +38,18 @@ public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapS
     /**
      * {@inheritDoc}
      *
-     * <p>Delegates to {@link #sampleWeights()} and stores the result on the wrapped
-     * data via {@link MolDataValues#setWeights(double[])}.
+     * <p>Returns a copy of the wrapped data with weights set by {@link #sampleWeights()}.
      */
     public MolDataValues<T> sample() {
-        double[] weights = sampleWeights();
-        data.setWeights(weights);
-        return data;
+        MolDataValues<T> copy = data.copy();
+        copy.setWeights(sampleWeights());
+        return copy;
     }
 
     /**
      * {@inheritDoc}
-     *
-     * <p>Resets all observation weights to 1.0, restoring the unweighted state.
      */
     public MolDataValues<T> getOriginalData() {
-        int nJ = getNSpectralDensities();
-        double[] weights = new double[nJ];
-        for (int j = 0; j < nJ; j++) weights[j] = 1.0;
-        data.setWeights(weights);
         return data;
     }
 

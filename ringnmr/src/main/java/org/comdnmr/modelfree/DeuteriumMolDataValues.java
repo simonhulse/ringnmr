@@ -60,4 +60,14 @@ public class DeuteriumMolDataValues extends MolDataValues<DeuteriumDataValue> {
     public MolDataValues<DeuteriumDataValue> createEmpty() {
         return new DeuteriumMolDataValues(atom, vector);
     }
+
+    @Override
+    public DeuteriumMolDataValues copy() {
+        DeuteriumMolDataValues copy = new DeuteriumMolDataValues(atom, vector);
+        copy.setTestModel(getTestModel());
+        for (DeuteriumDataValue dv : dataValues) {
+            copy.addData(new DeuteriumDataValue(copy, dv.R1, dv.R1err, dv.R2, dv.R2err, dv.rQ, dv.rQError, dv.rAP, dv.rAPError, dv.relaxObj));
+        }
+        return copy;
+    }
 }

@@ -142,6 +142,14 @@ public abstract class MolDataValues<T extends RelaxDataValue> {
 
     public abstract MolDataValues<T> createEmpty();
 
+    /**
+     * Returns a deep copy of this instance with the same atom, vector, and data
+     * values, but independent mutable state (weights, J-value cache, model).
+     *
+     * @return a new {@code MolDataValues<T>} containing copies of all data values
+     */
+    public abstract MolDataValues<T> copy();
+
     public void setJValues(double[][] jValuesSet) {
         jValues = Arrays.stream(jValuesSet).map(double[]::clone).toArray(double[][]::new);
     }

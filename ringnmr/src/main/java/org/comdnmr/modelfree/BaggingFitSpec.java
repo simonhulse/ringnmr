@@ -170,7 +170,7 @@ public class BaggingFitSpec extends FitSpec {
 
             Optional<Pair<Score, MFModelIso>> bestScoreModel = Optional.empty();
             for (MFModelIso model : models) {
-                data.setTestModel(model);
+                replicateData.setTestModel(model);
                 Score score = runFit(relaxFit, model);
                 if (bestScoreModel.isEmpty() || score.aicc().get() < bestScoreModel.get().getLeft().aicc().get()) {
                     bestScoreModel = Optional.of(Pair.of(score, model));
