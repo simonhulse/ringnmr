@@ -33,8 +33,15 @@ public class ParametricSampler<T extends RelaxDataValue> extends BootstrapSample
      *
      * @param data the relaxation data to be resampled; must contain at least one entry
      */
-    public ParametricSampler(MolDataValues<T> data) {
-        super(data);
+    public ParametricSampler(MolDataValues<T> data) { this(data, false); }
+
+    // Added for use in the regularization paper; not used within RING.
+    public static <T extends RelaxDataValue> ParametricSampler<T> withFixedSeed(MolDataValues<T> data) {
+        return new ParametricSampler<>(data, true);
+    }
+
+    private ParametricSampler(MolDataValues<T> data, boolean seed) {
+        super(data, seed);
         gaussian = ZigguratSampler.NormalizedGaussian.of(rng);
         originalObservables = data.getData().stream()
             .map(T::getObservables)

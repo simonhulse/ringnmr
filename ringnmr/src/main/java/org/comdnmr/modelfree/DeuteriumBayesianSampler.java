@@ -29,8 +29,15 @@ public class DeuteriumBayesianSampler extends WeightSampler<DeuteriumDataValue> 
      *
      * @param data the deuterium relaxation data to be resampled
      */
-    public DeuteriumBayesianSampler(MolDataValues<DeuteriumDataValue> data) {
-        super(data);
+    public DeuteriumBayesianSampler(MolDataValues<DeuteriumDataValue> data) { this(data, false); }
+
+    // Added for use in the regularization paper; not used within RING.
+    public static DeuteriumBayesianSampler withFixedSeed(MolDataValues<DeuteriumDataValue> data) {
+        return new DeuteriumBayesianSampler(data, true);
+    }
+
+    private DeuteriumBayesianSampler(MolDataValues<DeuteriumDataValue> data, boolean seed) {
+        super(data, seed);
         groups       = DeuteriumFrequencyGroups.of(data.getData());
         wdDirichlet  = groups.wdIndices.length  > 0 ? DirichletSampler.symmetric(rng, groups.wdIndices.length,  ALPHA) : null;
         w2dDirichlet = groups.w2dIndices.length > 0 ? DirichletSampler.symmetric(rng, groups.w2dIndices.length, ALPHA) : null;

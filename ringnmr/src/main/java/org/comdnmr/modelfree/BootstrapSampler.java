@@ -97,4 +97,5 @@ public abstract class BootstrapSampler<T extends RelaxDataValue> implements Obje
      * @return the wrapped {@code MolDataValues} with the original data restored
      */
     public abstract MolDataValues<T> getOriginalData();
+
 }

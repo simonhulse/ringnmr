@@ -22,6 +22,8 @@ public abstract class WeightSampler<T extends RelaxDataValue> extends BootstrapS
 
     WeightSampler(MolDataValues<T> data) { super(data); }
 
+    WeightSampler(MolDataValues<T> data, boolean seed) { super(data, seed); }
+
     /**
      * Generates a weight vector for the next bootstrap replicate.
      *

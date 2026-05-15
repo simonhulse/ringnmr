@@ -28,8 +28,15 @@ public class AmideBayesianSampler extends WeightSampler<R1R2NOEDataValue> {
      *
      * @param data the relaxation data to be resampled
      */
-    public AmideBayesianSampler(MolDataValues<R1R2NOEDataValue> data) {
-        super(data);
+    public AmideBayesianSampler(MolDataValues<R1R2NOEDataValue> data) { this(data, false); }
+
+    // Added for use in the regularization paper; not used within RING.
+    public static AmideBayesianSampler withFixedSeed(MolDataValues<R1R2NOEDataValue> data) {
+        return new AmideBayesianSampler(data, true);
+    }
+
+    private AmideBayesianSampler(MolDataValues<R1R2NOEDataValue> data, boolean seed) {
+        super(data, seed);
         dirichlets = new DirichletSampler[N_FREQ_CLASSES];
         for (int i = 0; i < N_FREQ_CLASSES; i++) {
             dirichlets[i] = DirichletSampler.symmetric(rng, getNFields(), ALPHA);

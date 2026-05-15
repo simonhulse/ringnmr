@@ -88,8 +88,15 @@ public class AmideNonparametricSampler extends WeightSampler<R1R2NOEDataValue> {
      *
      * @param data the relaxation data to be resampled
      */
-    public AmideNonparametricSampler(MolDataValues<R1R2NOEDataValue> data) {
-        super(data);
+    public AmideNonparametricSampler(MolDataValues<R1R2NOEDataValue> data) { this(data, false); }
+
+    // Added for use in the regularization paper; not used within RING.
+    public static AmideNonparametricSampler withFixedSeed(MolDataValues<R1R2NOEDataValue> data) {
+        return new AmideNonparametricSampler(data, true);
+    }
+
+    private AmideNonparametricSampler(MolDataValues<R1R2NOEDataValue> data, boolean seed) {
+        super(data, seed);
         iterator = generateIterator();
     }
 

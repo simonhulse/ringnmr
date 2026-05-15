@@ -39,8 +39,15 @@ public class DeuteriumNonparametricSampler extends WeightSampler<DeuteriumDataVa
     private final Iterator<int[]> iterator;
     private final int nBootstraps;
 
-    public DeuteriumNonparametricSampler(MolDataValues<DeuteriumDataValue> data) {
-        super(data);
+    public DeuteriumNonparametricSampler(MolDataValues<DeuteriumDataValue> data) { this(data, false); }
+
+    // Added for use in the regularization paper; not used within RING.
+    public static DeuteriumNonparametricSampler withFixedSeed(MolDataValues<DeuteriumDataValue> data) {
+        return new DeuteriumNonparametricSampler(data, true);
+    }
+
+    private DeuteriumNonparametricSampler(MolDataValues<DeuteriumDataValue> data, boolean seed) {
+        super(data, seed);
         groups     = DeuteriumFrequencyGroups.of(data.getData());
         wdVectors  = enumerate(groups.wdIndices.length);
         w2dVectors = enumerate(groups.w2dIndices.length);

@@ -92,6 +92,10 @@ public abstract class FitSpec {
      */
     protected final boolean useMedian;
 
+    // Added for use in the regularization paper; not used within RING.
+    /** If {@code true}, bootstrap samplers are initialised with a fixed seed for reproducibility. */
+    protected final boolean fixedSeed;
+
     /**
      * Registry mapping human-readable method names to their corresponding
      * {@code FitSpec} subclass. Insertion order is preserved via
@@ -126,6 +130,7 @@ public abstract class FitSpec {
         this.r2Limit = builder.r2Limit;
         this.nReplicates = builder.nReplicates;
         this.useMedian = builder.useMedian;
+        this.fixedSeed = builder.fixedSeed;
     }
 
     /**
@@ -258,6 +263,7 @@ public abstract class FitSpec {
         builder.append(String.format("bootstrapMode = \"%s\"%n", bootstrapMode.toString().toLowerCase()));
         builder.append(String.format("nReplicates = %d%n", nReplicates));
         builder.append(String.format("useMedian = %b%n", useMedian));
+        builder.append(String.format("fixedSeed = %b%n", fixedSeed));
         return builder;
     }
 
@@ -383,14 +389,16 @@ public abstract class FitSpec {
     @SuppressWarnings("unchecked")
     public <T extends RelaxDataValue> BootstrapSampler<T> getBootstrapSampler(MolDataValues<T> data) {
         return switch (bootstrapMode) {
-            case PARAMETRIC    -> new ParametricSampler<>(data);
-            case NONPARAMETRIC -> switch (moietyType) {
-                case DEUTERATED_METHYL -> (BootstrapSampler<T>) new DeuteriumNonparametricSampler((MolDataValues<DeuteriumDataValue>) data);
-                case AMIDE             -> (BootstrapSampler<T>) new AmideNonparametricSampler((MolDataValues<R1R2NOEDataValue>) data);
+            case PARAMETRIC    -> fixedSeed
+                ? ParametricSampler.withFixedSeed(data)
+                : new ParametricSampler<>(data);
+            case NONPARAMETRIC -> (BootstrapSampler<T>) switch (moietyType) {
+                case DEUTERATED_METHYL -> fixedSeed ? DeuteriumNonparametricSampler.withFixedSeed((MolDataValues<DeuteriumDataValue>) data) : new DeuteriumNonparametricSampler((MolDataValues<DeuteriumDataValue>) data);
+                case AMIDE             -> fixedSeed ? AmideNonparametricSampler.withFixedSeed((MolDataValues<R1R2NOEDataValue>) data)         : new AmideNonparametricSampler((MolDataValues<R1R2NOEDataValue>) data);
             };
-            case BAYESIAN      -> switch (moietyType) {
-                case DEUTERATED_METHYL -> (BootstrapSampler<T>) new DeuteriumBayesianSampler((MolDataValues<DeuteriumDataValue>) data);
-                case AMIDE             -> (BootstrapSampler<T>) new AmideBayesianSampler((MolDataValues<R1R2NOEDataValue>) data);
+            case BAYESIAN      -> (BootstrapSampler<T>) switch (moietyType) {
+                case DEUTERATED_METHYL -> fixedSeed ? DeuteriumBayesianSampler.withFixedSeed((MolDataValues<DeuteriumDataValue>) data) : new DeuteriumBayesianSampler((MolDataValues<DeuteriumDataValue>) data);
+                case AMIDE             -> fixedSeed ? AmideBayesianSampler.withFixedSeed((MolDataValues<R1R2NOEDataValue>) data)         : new AmideBayesianSampler((MolDataValues<R1R2NOEDataValue>) data);
             };
         };
     }
@@ -592,6 +600,7 @@ public abstract class FitSpec {
         sb.append("tauMFraction=").append(Double.doubleToLongBits(tauMFraction)).append('|');
         sb.append("r2Limit=").append(Double.doubleToLongBits(r2Limit)).append('|');
         sb.append("nReplicates=").append(nReplicates).append('|');
+        sb.append("fixedSeed=").append(fixedSeed).append('|');
 
         // Hook for subclasses
         appendSubclassState(sb);
@@ -739,6 +748,8 @@ public abstract class FitSpec {
         protected double r2Limit = DEFAULT_R2_LIMIT;
         protected int nReplicates = DEFAULT_N_REPLICATES;
         protected boolean useMedian = DEFAULT_USE_MEDIAN;
+        // Added for use in the regularization paper; not used within RING.
+        protected boolean fixedSeed = false;
 
         // ── Default-value accessors ─────────────────────────────────────
 
@@ -934,6 +945,12 @@ public abstract class FitSpec {
          */
         public T useMedian(boolean useMedian) {
             this.useMedian = useMedian;
+            return self();
+        }
+
+        // Added for use in the regularization paper; not used within RING.
+        public T fixedSeed(boolean fixedSeed) {
+            this.fixedSeed = fixedSeed;
             return self();
         }
 
