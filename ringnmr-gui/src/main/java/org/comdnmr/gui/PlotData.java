@@ -39,6 +39,7 @@ import javafx.collections.ListChangeListener;
 import javafx.geometry.Orientation;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
@@ -59,6 +60,9 @@ public class PlotData extends XYCanvasChart {
     ObservableList<DataSeries> simData = FXCollections.observableArrayList();
     String fileName;
     ObservableList<GUIPlotEquation> plotEquations = FXCollections.observableArrayList();
+
+    private double defaultXLower, defaultXUpper, defaultYLower, defaultYUpper;
+    private double dragAnchorX, dragAnchorY;
 
     protected static final Color[] colors = {
             Color.web("#1b9e77"),
@@ -93,6 +97,9 @@ public class PlotData extends XYCanvasChart {
         yAxis.setLabel("R2 (ν)");
         plotEquations.addListener((ListChangeListener) (e -> drawChart()));
         getCanvas().setOnMouseClicked(this::mouseClicked);
+        getCanvas().setOnScroll(this::mouseScrolled);
+        getCanvas().setOnMousePressed(this::mousePressedForPan);
+        getCanvas().setOnMouseDragged(this::mouseDraggedForPan);
     }
 
     @Override
@@ -104,6 +111,10 @@ public class PlotData extends XYCanvasChart {
 
     @Override
     public void setBounds(double xLower, double xUpper, double yLower, double yUpper, double xtick, double ytick) {
+        defaultXLower = xLower;
+        defaultXUpper = xUpper;
+        defaultYLower = yLower;
+        defaultYUpper = yUpper;
         xAxis.setLowerBound(xLower);
         xAxis.setUpperBound(xUpper);
         yAxis.setLowerBound(yLower);
@@ -112,13 +123,50 @@ public class PlotData extends XYCanvasChart {
     }
 
     void mouseClicked(MouseEvent e) {
+        if (e.getClickCount() == 2) {
+            xAxis.setLowerBound(defaultXLower);
+            xAxis.setUpperBound(defaultXUpper);
+            yAxis.setLowerBound(defaultYLower);
+            yAxis.setUpperBound(defaultYUpper);
+            drawChart();
+            return;
+        }
         Optional<Hit> hitOpt = pickChart(e.getX(), e.getY(), 5);
         if (hitOpt.isPresent()) {
             Hit hit = hitOpt.get();
             PyController.mainController.selectTableRow(hit.getSeries().getName(), hit.getIndex());
             PyController.mainController.statusBar.setText(hit.toString());
-
         }
+    }
+
+    void mouseScrolled(ScrollEvent e) {
+        double factor = Math.pow(0.999, e.getDeltaY());
+        double dataX = xAxis.getValueForDisplay(e.getX()).doubleValue();
+        double dataY = yAxis.getValueForDisplay(e.getY()).doubleValue();
+        xAxis.setLowerBound(dataX + (xAxis.getLowerBound() - dataX) * factor);
+        xAxis.setUpperBound(dataX + (xAxis.getUpperBound() - dataX) * factor);
+        yAxis.setLowerBound(dataY + (yAxis.getLowerBound() - dataY) * factor);
+        yAxis.setUpperBound(dataY + (yAxis.getUpperBound() - dataY) * factor);
+        drawChart();
+    }
+
+    void mousePressedForPan(MouseEvent e) {
+        dragAnchorX = xAxis.getValueForDisplay(e.getX()).doubleValue();
+        dragAnchorY = yAxis.getValueForDisplay(e.getY()).doubleValue();
+    }
+
+    void mouseDraggedForPan(MouseEvent e) {
+        double dataX = xAxis.getValueForDisplay(e.getX()).doubleValue();
+        double dataY = yAxis.getValueForDisplay(e.getY()).doubleValue();
+        double dx = dragAnchorX - dataX;
+        double dy = dragAnchorY - dataY;
+        xAxis.setLowerBound(xAxis.getLowerBound() + dx);
+        xAxis.setUpperBound(xAxis.getUpperBound() + dx);
+        yAxis.setLowerBound(yAxis.getLowerBound() + dy);
+        yAxis.setUpperBound(yAxis.getUpperBound() + dy);
+        dragAnchorX = xAxis.getValueForDisplay(e.getX()).doubleValue();
+        dragAnchorY = yAxis.getValueForDisplay(e.getY()).doubleValue();
+        drawChart();
     }
 
     public int getNumPlots() {
@@ -181,6 +229,10 @@ public class PlotData extends XYCanvasChart {
         int nIncr = 256;
         double[] xValues = new double[nIncr];
         double[] yValues = new double[nIncr];
+        gC.save();
+        gC.beginPath();
+        gC.rect(xAxis.getXOrigin(), yAxis.getYOrigin() - yAxis.getHeight(), xAxis.getWidth(), yAxis.getHeight());
+        gC.clip();
         for (GUIPlotEquation plotEquation : plotEquations) {
             if (plotEquation == null) {
                 continue;
@@ -203,8 +255,11 @@ public class PlotData extends XYCanvasChart {
                 yValues[i] = y;
             }
             gC.setStroke(plotEquation.getColor());
+            gC.setLineWidth(plotEquation.getLineWidth());
             gC.strokePolyline(xValues, yValues, nIncr);
         }
+        gC.setLineWidth(1.0);
+        gC.restore();
     }
 
     private ObservableList<DataSeries> loadChartData(String[] residues) throws IOException {

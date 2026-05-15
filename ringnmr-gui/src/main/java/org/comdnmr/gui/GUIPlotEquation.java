@@ -28,6 +28,7 @@ public class GUIPlotEquation extends PlotEquation {
 
     private Color color = Color.BLACK;
     private double scaleValue = 1.0;
+    private double lineWidth = 1.0;
 
     public GUIPlotEquation(String expType, String name, double[] pars, double[] errs, double[] extras) {
         super(expType, name, pars, errs, extras);
@@ -64,6 +65,13 @@ public class GUIPlotEquation extends PlotEquation {
     public void setScaleValue(double scaleValue) {
         this.scaleValue = scaleValue;
     }
-    
+
+    public double getLineWidth() {
+        return lineWidth;
+    }
+
+    public void setLineWidth(double lineWidth) {
+        this.lineWidth = lineWidth;
+    }
 
 }

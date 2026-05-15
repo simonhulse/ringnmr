@@ -57,6 +57,7 @@ public abstract class FitModel implements BasicFitter {
     int lastFitCount = 0;
     boolean useMedian = false;
     boolean calcValidation = false;
+    private Map<String, ModelFitResult> lastFitResults = null;
 
     Function<Double, Double> updaterFunction;
     Function<ProcessingStatus, Double> statusFunction;
@@ -368,8 +369,13 @@ public abstract class FitModel implements BasicFitter {
         updateStatus("Done: fit " + lastFitCount + " residues");
     }
 
+    public Map<String, ModelFitResult> getLastFitResults() {
+        return lastFitResults;
+    }
+
     public void fitAll(Task task) {
-        lastFitCount = testIsoModel().size();
+        lastFitResults = testIsoModel();
+        lastFitCount = lastFitResults.size();
         if (task != null) {
             updateProgress(1.0);
         }

@@ -33,6 +33,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.print.PrinterJob;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -267,7 +269,10 @@ public class PyController implements Initializable {
     HBox bootstrapMethodHBox;
     Label useMedianLabel;
     CheckBox useMedianCheckBox;
+    CheckBox showBootstrapFitsCheckBox;
     // << Bootstrapping panel <<
+
+    Map<String, ModelFitResult> lastFitResults = null;
 
     // <<< Model-free entities <<<
 
@@ -577,6 +582,13 @@ public class PyController implements Initializable {
         Accordion modelFreeAccordion = new Accordion(fitProtocolPane, tauMTreatmentPane, bootstrapingPane);
         modelFreeAccordion.setExpandedPane(fitProtocolPane);
         ((VBox) modelFreeTab.getContent()).getChildren().add(modelFreeAccordion);
+
+        showBootstrapFitsCheckBox = new CheckBox("Show bootstrap fits");
+        showBootstrapFitsCheckBox.setVisible(false);
+        showBootstrapFitsCheckBox.setOnAction(e -> showInfo(chartInfo, xychart));
+        StackPane.setAlignment(showBootstrapFitsCheckBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(showBootstrapFitsCheckBox, new Insets(10, 15, 0, 0));
+        stackPane.getChildren().add(showBootstrapFitsCheckBox);
 
         setModelFreeState();
     }
@@ -1382,6 +1394,7 @@ public class PyController implements Initializable {
     }
 
     public void updateXYChartLabels() {
+        showBootstrapFitsCheckBox.setVisible(false);
         if ((simControls instanceof CPMGControls)) {
             xychart.setNames("CPMG", "ν (CPMG)", "R₂ (ν)", "0");
             xychart.setBounds(0.0, 1100.0, 0.0, 65.0, 100.0, 5.0);
@@ -1794,6 +1807,7 @@ public class PyController implements Initializable {
     }
 
     public void finishModelFreeFit() {
+        lastFitResults = modelFitter.getLastFitResults();
         Map<String, OrderParSet> molResProps = DataIO.getOrderParSetFromMolecule();
         for (var entry : molResProps.entrySet()) {
             String setName = entry.getKey();
@@ -2392,6 +2406,7 @@ public class PyController implements Initializable {
     }
 
     public void showModelFreeData(List<String> chartNames) {
+        showBootstrapFitsCheckBox.setVisible(true);
         var chartMap = setupCharts(chartNames);
         var usedSet = new TreeSet<String>();
         var molResProps = DataIO.getOrderParSetFromMolecule();
@@ -3281,8 +3296,31 @@ public class PyController implements Initializable {
                         Integer nValues = orderPar.getN();
                         updateFitQuality(aic, aicc, rms, rChiSq, nValues);
                         double[] extras = new double[1];
+                        Color mainColor = PlotData.colors[iSeries % 8];
+
+                        if (showBootstrapFitsCheckBox.isSelected() && lastFitResults != null) {
+                            ModelFitResult fitResult = lastFitResults.get(atom.getFullName());
+                            if (fitResult != null) {
+                                double[][] repData = fitResult.replicateData();
+                                int nReplicates = repData[0].length;
+                                int nRepPars = repData.length;
+                                int offset = pars.length - nRepPars;
+                                Color repColor = Color.GRAY.deriveColor(0, 1, 1, 0.25);
+                                double[] repErrs = new double[pars.length];
+                                for (int rep = 0; rep < nReplicates; rep++) {
+                                    double[] repPars = pars.clone();
+                                    for (int k = 0; k < nRepPars; k++) repPars[k + offset] = repData[k][rep];
+                                    var repEquation = new GUIPlotEquation(modelName, "spectralDensity", repPars, repErrs, extras);
+                                    repEquation.setColor(repColor);
+                                    repEquation.setLineWidth(0.5);
+                                    equations.add(repEquation);
+                                }
+                            }
+                        }
+
                         var guiPlotEquation = new GUIPlotEquation(modelName, "spectralDensity", pars, errs, extras);
-                        guiPlotEquation.setColor(PlotData.colors[iSeries % 8]);
+                        guiPlotEquation.setColor(mainColor);
+                        guiPlotEquation.setLineWidth(2.0);
                         equations.add(guiPlotEquation);
                         iSeries++;
 
